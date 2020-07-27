@@ -8,6 +8,7 @@
 #include "VulkanRenderer.h"
 
 using std::string;
+using std::vector;
 
 GLFWwindow *window;
 VulkanRenderer vulkanRenderer;

@@ -1,5 +1,14 @@
 #include "VulkanRenderer.h"
 
+// refer to https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers for higher levels of configuration.
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT messageType,
+	const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
+	void *pUserData) {
+	printf("validation layer=%s\n", pCallbackData->pMessage);
+	return VK_FALSE;
+}
+
 VulkanRenderer::VulkanRenderer() {
 }
 
@@ -10,6 +19,7 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 	_window = newWindow;
 	try {
 		createInstance();
+		createDebugMessengerExtension();
 		getPhysicalDevice();
 		createLogicalDevice();
 	}
@@ -22,11 +32,23 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 }
 
 void VulkanRenderer::destroy() {
+	// setup validation layer for destruction.
+	if (_enableValidationLayers) {
+		auto destroyMessengerFunc = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(_instance, "vkDestroyDebugUtilsMessengerEXT");
+		if (destroyMessengerFunc != nullptr) {
+			destroyMessengerFunc(_instance, _debugMessenger, nullptr);
+		}
+	}
 	vkDestroyDevice(_mainDevice.logicalDevice, nullptr);
 	vkDestroyInstance(_instance, nullptr);
 }
 
 void VulkanRenderer::createInstance() {
+	// check if we should enable validation layers and if they are supported.
+	if (_enableValidationLayers && !checkValidationLayerSupport()) {
+		throw std::runtime_error("validation layers requested, but not available!");
+	}
+
 	// Info about the app itself.
 	// Most data here doesn't affect the program and is for dev convenience.
 	VkApplicationInfo appInfo{};
@@ -43,19 +65,7 @@ void VulkanRenderer::createInstance() {
 	createInfo.pApplicationInfo = &appInfo;
 
 	// Create list to hold the instance extensions.
-	vector<const char *> instanceExtensions = vector<const char *>();
-
-	// Set up extensions the instance will use.
-	uint32_t glfwExtensionCount{ 0 }; // glfw may require multiple extensions.
-	const char **glfwExtensions; // extensions passed as array of c strings, so we need array of pointers.
-
-	// Get glfw extensions.
-	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-
-	// Add glfw extensions to list of extensions.
-	for (size_t i{ 0 }; i < glfwExtensionCount; i++) {
-		instanceExtensions.push_back(glfwExtensions[i]);
-	}
+	vector<const char *> instanceExtensions{ getRequiredExtensions() };
 
 	// Check instance extensions supported.
 	if (!checkInstanceExtensionSupport(&instanceExtensions)) {
@@ -66,9 +76,19 @@ void VulkanRenderer::createInstance() {
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(instanceExtensions.size());
 	createInfo.ppEnabledExtensionNames = instanceExtensions.data();
 
-	// TODO: Set up the validation layers the instance will use.
-	createInfo.enabledLayerCount = 0; // No validation for now.
-	createInfo.ppEnabledLayerNames = nullptr;
+	// Set up the validation layers the instance will use.
+	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+	if (_enableValidationLayers) {
+		createInfo.enabledLayerCount = static_cast<uint32_t>(_validationLayers.size());
+		createInfo.ppEnabledLayerNames = _validationLayers.data();
+
+		populateDebugMessengerCreateInfo(debugCreateInfo);
+		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
+	}
+	else {
+		createInfo.enabledLayerCount = 0;
+		createInfo.pNext = nullptr;
+	}
 
 	// Create instance.
 	VkResult result{ vkCreateInstance(&createInfo, nullptr, &_instance) };
@@ -112,6 +132,36 @@ void VulkanRenderer::createLogicalDevice() {
 	vkGetDeviceQueue(_mainDevice.logicalDevice, indices.graphicsFamily, 0, &_graphicsQueue);
 }
 
+void VulkanRenderer::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo) {
+	// Create the info as usual.	
+	createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+		| VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	createInfo.pfnUserCallback = debugCallback;
+	createInfo.pUserData = nullptr; // could pass pointer to any class.
+}
+
+void VulkanRenderer::createDebugMessengerExtension() {
+	if (!_enableValidationLayers) return;
+
+	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
+	populateDebugMessengerCreateInfo(createInfo);
+
+	// Create the debug messenger.
+	auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(_instance, "vkCreateDebugUtilsMessengerEXT");
+	if (func != nullptr) {
+		VkResult result{ func(_instance, &createInfo, nullptr, &_debugMessenger) };
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create the debug messenger.");
+		}
+	} else {
+		throw std::runtime_error("Failed to create the debug messenger.");
+		// return VK_ERROR_EXTENSION_NOT_PRESENT; could use this in a diff impl.
+	}
+}
+
 void VulkanRenderer::getPhysicalDevice() {
 	// enumerate physical devices the vkInstance can access.
 	uint32_t deviceCount{ 0 };
@@ -132,6 +182,24 @@ void VulkanRenderer::getPhysicalDevice() {
 			_mainDevice.physicalDevice = device;
 		}
 	}	
+}
+
+vector<const char *> VulkanRenderer::getRequiredExtensions() {
+	// Set up extensions the instance will use.
+	uint32_t glfwExtensionCount{ 0 }; // glfw may require multiple extensions.
+	const char **glfwExtensions; // extensions passed as array of c strings, so we need array of pointers.
+
+	// Get glfw extensions.
+	glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+
+	// Add glfw extensions to list of extensions.
+	vector<const char *> instanceExtensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+	
+	if (_enableValidationLayers) {
+		instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	}
+
+	return instanceExtensions;
 }
 
 bool VulkanRenderer::checkInstanceExtensionSupport(const vector<const char *> *checkExtensions) {
@@ -173,6 +241,28 @@ bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice device) {
 	
 	QueueFamilyIndices indices{ getQueueFamilies(device) };
 	return indices.isValid();
+}
+
+bool VulkanRenderer::checkValidationLayerSupport() {
+	uint32_t layerCount{ 0 };
+	vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+	vector<VkLayerProperties> availableLayers(layerCount);
+	vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
+
+	for (const char *layerName : _validationLayers) {
+		bool layerFound{ false };
+		for (const auto &layerProperties : availableLayers) {
+			if (strcmp(layerName, layerProperties.layerName) == 0) {
+				layerFound = true;
+				break;
+			}
+		}
+		if (!layerFound) {
+			return false;
+		}
+	}
+	return true;
 }
 
 QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice device)
