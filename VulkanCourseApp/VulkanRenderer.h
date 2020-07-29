@@ -5,10 +5,16 @@
 
 #include <stdexcept>
 #include <vector>
+#include <set>
+#include <algorithm>
 
 #include "Utilities.h"
 
 using std::vector;
+using std::set;
+using std::numeric_limits;
+using std::min;
+using std::max;
 
 class VulkanRenderer
 {
@@ -23,6 +29,8 @@ private:
 	// - create functions
 	void createInstance();
 	void createLogicalDevice();
+	void createSurface();
+	void createSwapChain();
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
 	// - get functions
@@ -31,10 +39,16 @@ private:
 	// - support functions
 	// -- checker functions
 	bool checkInstanceExtensionSupport(const vector<const char *> *checkExtensions);
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 	bool checkDeviceSuitable(VkPhysicalDevice device);
 	bool checkValidationLayerSupport();
 	// -- Getter functions.
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
+	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
+	// -- Choose functions.
+	VkSurfaceFormatKHR chooseBestSurfaceFormat(const vector<VkSurfaceFormatKHR> &formats);
+	VkPresentModeKHR chooseBestPresMode(const vector <VkPresentModeKHR> presModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &surfaceCapabilities);
 
 	// VARS
 	GLFWwindow *_window;
@@ -42,10 +56,12 @@ private:
 	// vulkan components
 	VkInstance _instance;
 	VkQueue _graphicsQueue;
+	VkQueue _presentationQueue;
 	struct {
 		VkPhysicalDevice physicalDevice;
 		VkDevice logicalDevice;
 	} _mainDevice;
+	VkSurfaceKHR _surface;
 	VkDebugUtilsMessengerEXT _debugMessenger;
 
 	// variable length vars.
