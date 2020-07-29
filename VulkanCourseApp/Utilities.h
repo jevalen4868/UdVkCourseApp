@@ -18,8 +18,13 @@ struct QueueFamilyIndices {
 	}
 };
 
-struct SwapChainDetails {
+struct SwapchainDetails {
 	VkSurfaceCapabilitiesKHR surfaceCapabilities; // Surface properties.
 	vector<VkSurfaceFormatKHR> formats; // Surface image formats.
 	vector<VkPresentModeKHR> presentationModes; // How images should be presented to screen.
+};
+
+struct SwapchainImage {
+	VkImage image;
+	VkImageView imageView;
 };

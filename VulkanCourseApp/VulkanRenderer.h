@@ -31,6 +31,7 @@ private:
 	void createLogicalDevice();
 	void createSurface();
 	void createSwapChain();
+	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
 	// - get functions
@@ -44,7 +45,7 @@ private:
 	bool checkValidationLayerSupport();
 	// -- Getter functions.
 	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
-	SwapChainDetails getSwapChainDetails(VkPhysicalDevice device);
+	SwapchainDetails getSwapChainDetails(VkPhysicalDevice device);
 	// -- Choose functions.
 	VkSurfaceFormatKHR chooseBestSurfaceFormat(const vector<VkSurfaceFormatKHR> &formats);
 	VkPresentModeKHR chooseBestPresMode(const vector <VkPresentModeKHR> presModes);
@@ -62,9 +63,13 @@ private:
 		VkDevice logicalDevice;
 	} _mainDevice;
 	VkSurfaceKHR _surface;
+	VkSwapchainKHR _swapchain;
+	VkFormat _swapchainImageFormat;
+	VkExtent2D _swapchainExtent;
 	VkDebugUtilsMessengerEXT _debugMessenger;
 
 	// variable length vars.
+	vector<SwapchainImage> _swapchainImages;
 	const vector<const char *> _validationLayers {
 		"VK_LAYER_KHRONOS_validation",
 	};
