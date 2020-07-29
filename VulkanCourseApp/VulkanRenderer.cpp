@@ -166,6 +166,7 @@ void VulkanRenderer::createSwapChain() {
 
 	// Creation info for swap chain.
 	VkSwapchainCreateInfoKHR swapChainCreateInfo{};
+	swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 }
 
 void VulkanRenderer::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo) {
