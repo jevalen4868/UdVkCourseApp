@@ -26,7 +26,7 @@ void initWindow(string wName = "Test Window", const int width = 800, const int h
 
 int main() {
 	// create window
-	initWindow("Test Window", 800, 600);
+	initWindow("Test Window", 1920, 1080);
 
 	// create vulkan renderer instance
 	if (vulkanRenderer.init(window) == EXIT_FAILURE) {

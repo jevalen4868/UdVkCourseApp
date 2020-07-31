@@ -24,6 +24,7 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		getPhysicalDevice();
 		createLogicalDevice();
 		createSwapChain();
+		createGraphicsPipeline();
 	}
 	catch (const std::runtime_error &e) {
 		printf("ERROR: %s\n", e.what());
@@ -232,6 +233,19 @@ void VulkanRenderer::createSwapChain() {
 	}
 }
 
+void VulkanRenderer::createGraphicsPipeline() {
+	// Read in SPIR-V shader code.
+	auto vertexShader = readFile("Shaders/vert.spv");
+	auto fragmentShader = readFile("Shaders/frag.spv");
+	VkShaderModule vertexShaderModule{ createShaderModule(vertexShader) };
+	VkShaderModule fragShaderModule{ createShaderModule(fragmentShader) };
+
+	// TODO: Create pipeline
+
+	vkDestroyShaderModule(_mainDevice.logicalDevice, fragShaderModule, nullptr);
+	vkDestroyShaderModule(_mainDevice.logicalDevice, vertexShaderModule, nullptr);
+}
+
 VkImageView VulkanRenderer::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
 	VkImageViewCreateInfo viewCreateInfo{};
 	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -256,6 +270,21 @@ VkImageView VulkanRenderer::createImageView(VkImage image, VkFormat format, VkIm
 		throw std::runtime_error("Failed to create an image view.");
 	}
 	return imageView;
+}
+
+VkShaderModule VulkanRenderer::createShaderModule(const vector<char> &code) {
+	// Shader module create info.
+	VkShaderModuleCreateInfo shaderCreateInfo{};
+	shaderCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderCreateInfo.codeSize = code.size(); // size of code.
+	// reinterpret what pointer is pointing to.
+	shaderCreateInfo.pCode = reinterpret_cast<const uint32_t *>(code.data()); // pointer to coe (uint32_t pointer type)
+	VkShaderModule shaderModule;
+	VkResult result{ vkCreateShaderModule(_mainDevice.logicalDevice, &shaderCreateInfo, nullptr, &shaderModule) };
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create a shader module.");
+	}
+	return shaderModule;
 }
 
 void VulkanRenderer::populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo) {

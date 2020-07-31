@@ -31,7 +31,9 @@ private:
 	void createLogicalDevice();
 	void createSurface();
 	void createSwapChain();
+	void createGraphicsPipeline();
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
+	VkShaderModule createShaderModule(const vector<char> &code);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
 	// - get functions
