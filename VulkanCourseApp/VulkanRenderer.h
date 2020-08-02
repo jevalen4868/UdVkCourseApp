@@ -7,12 +7,13 @@
 #include <vector>
 #include <set>
 #include <algorithm>
-
+#include <array>
 #include "Utilities.h"
 
 using std::vector;
 using std::set;
 using std::numeric_limits;
+using std::array;
 using std::min;
 using std::max;
 
@@ -31,6 +32,7 @@ private:
 	void createLogicalDevice();
 	void createSurface();
 	void createSwapChain();
+	void createRenderPass();
 	void createGraphicsPipeline();
 	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
 	VkShaderModule createShaderModule(const vector<char> &code);
@@ -69,6 +71,11 @@ private:
 	VkFormat _swapchainImageFormat;
 	VkExtent2D _swapchainExtent;
 	VkDebugUtilsMessengerEXT _debugMessenger;
+	
+	// PIPELINE
+	VkRenderPass _renderPass;
+	VkPipelineLayout _pipelineLayout;
+	VkPipeline _graphicsPipeline;
 
 	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;
