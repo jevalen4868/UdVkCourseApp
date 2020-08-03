@@ -34,7 +34,9 @@ private:
 	void createSwapChain();
 	void createRenderPass();
 	void createGraphicsPipeline();
-	VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags flags);
+	void createFramebuffers();
+	void createCommandPool();
+	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
 	VkShaderModule createShaderModule(const vector<char> &code);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
@@ -44,12 +46,12 @@ private:
 	// - support functions
 	// -- checker functions
 	bool checkInstanceExtensionSupport(const vector<const char *> *checkExtensions);
-	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-	bool checkDeviceSuitable(VkPhysicalDevice device);
+	bool checkDeviceExtensionSupport(const VkPhysicalDevice &device);
+	bool checkDeviceSuitable(const VkPhysicalDevice &device);
 	bool checkValidationLayerSupport();
 	// -- Getter functions.
-	QueueFamilyIndices getQueueFamilies(VkPhysicalDevice device);
-	SwapchainDetails getSwapChainDetails(VkPhysicalDevice device);
+	QueueFamilyIndices getQueueFamilies(const VkPhysicalDevice &device);
+	SwapchainDetails getSwapChainDetails(const VkPhysicalDevice &device);
 	// -- Choose functions.
 	VkSurfaceFormatKHR chooseBestSurfaceFormat(const vector<VkSurfaceFormatKHR> &formats);
 	VkPresentModeKHR chooseBestPresMode(const vector <VkPresentModeKHR> presModes);
@@ -76,6 +78,11 @@ private:
 	VkRenderPass _renderPass;
 	VkPipelineLayout _pipelineLayout;
 	VkPipeline _graphicsPipeline;
+
+	// POOLS
+	VkCommandPool _graphicsCommandPool;
+
+	vector<VkFramebuffer> _swapchainFramebuffers;
 
 	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;

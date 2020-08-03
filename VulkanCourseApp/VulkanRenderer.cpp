@@ -36,6 +36,9 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 }
 
 void VulkanRenderer::destroy() {
+	for (const auto &framebuffer : _swapchainFramebuffers) {
+		vkDestroyFramebuffer(_mainDevice.logicalDevice, framebuffer, nullptr);
+	}
 	vkDestroyPipeline(_mainDevice.logicalDevice, _graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(_mainDevice.logicalDevice, _pipelineLayout, nullptr);
 	vkDestroyRenderPass(_mainDevice.logicalDevice, _renderPass, nullptr);
@@ -96,8 +99,7 @@ void VulkanRenderer::createInstance() {
 
 		populateDebugMessengerCreateInfo(debugCreateInfo);
 		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT *)&debugCreateInfo;
-	}
-	else {
+	} else {
 		createInfo.enabledLayerCount = 0;
 		createInfo.pNext = nullptr;
 	}
@@ -405,6 +407,43 @@ void VulkanRenderer::createGraphicsPipeline() {
 	vkDestroyShaderModule(_mainDevice.logicalDevice, vertexShaderModule, nullptr);
 }
 
+void VulkanRenderer::createFramebuffers() {
+	// Should equal image count.
+	_swapchainFramebuffers.resize(_swapchainImages.size());
+	for (size_t i{ 0 }; i < _swapchainFramebuffers.size(); i++) {
+		array<VkImageView, 1> attachments{
+			_swapchainImages[i].imageView
+		};
+		VkFramebufferCreateInfo info{};
+		info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		info.renderPass = _renderPass; // Render Pass layout the framebuffer will be used with.
+		info.attachmentCount = static_cast<uint32_t>(attachments.size());
+		info.pAttachments = attachments.data(); // List of attachments 1:1 with render pass.
+		info.width = _swapchainExtent.width;
+		info.height = _swapchainExtent.height;
+		info.layers = 1; // Framebuffer layers.
+
+		VkResult result{ vkCreateFramebuffer(_mainDevice.logicalDevice, &info, nullptr, &_swapchainFramebuffers[i]) };
+		if (result != VK_SUCCESS) {
+			throw std::runtime_error("Failed to create a frame buffer.");
+		}
+	}
+}
+
+void VulkanRenderer::createCommandPool() {
+	QueueFamilyIndices indices = getQueueFamilies(_mainDevice.physicalDevice);
+
+	VkCommandPoolCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	info.queueFamilyIndex = indices.graphicsFamily; // Queue family type that buffers from this command pool will use.
+
+	// Create a graphics queue family command pool.
+	VkResult result{ vkCreateCommandPool(_mainDevice.logicalDevice, &info, nullptr, &_graphicsCommandPool) };
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create a frame buffer.");
+	}
+}
+
 void VulkanRenderer::createRenderPass() {
 	// Color attachment of render pass.
 	VkAttachmentDescription colorAtt{};
@@ -478,7 +517,7 @@ void VulkanRenderer::createRenderPass() {
 	
 }
 
-VkImageView VulkanRenderer::createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) {
+VkImageView VulkanRenderer::createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags) {
 	VkImageViewCreateInfo viewCreateInfo{};
 	viewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	viewCreateInfo.image = image; // Image to create view for.
@@ -615,7 +654,7 @@ bool VulkanRenderer::checkInstanceExtensionSupport(const vector<const char *> *c
 	return true;
 }
 
-bool VulkanRenderer::checkDeviceExtensionSupport(VkPhysicalDevice device) {
+bool VulkanRenderer::checkDeviceExtensionSupport(const VkPhysicalDevice &device) {
 	// Get device extension count.
 	uint32_t extensionCount{ 0 };
 	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
@@ -643,7 +682,7 @@ bool VulkanRenderer::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 	return true;
 }
 
-bool VulkanRenderer::checkDeviceSuitable(VkPhysicalDevice device) {
+bool VulkanRenderer::checkDeviceSuitable(const VkPhysicalDevice &device) {
 	/*
 	// Info about the device. (id, name, type, vendor ,etc)
 	VkPhysicalDeviceProperties deviceProps;
@@ -686,7 +725,7 @@ bool VulkanRenderer::checkValidationLayerSupport() {
 	return true;
 }
 
-QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice device)
+QueueFamilyIndices VulkanRenderer::getQueueFamilies(const VkPhysicalDevice &device)
 {
 	QueueFamilyIndices indices;
 
@@ -725,7 +764,7 @@ QueueFamilyIndices VulkanRenderer::getQueueFamilies(VkPhysicalDevice device)
 	return indices;
 }
 
-SwapchainDetails VulkanRenderer::getSwapChainDetails(VkPhysicalDevice device) {
+SwapchainDetails VulkanRenderer::getSwapChainDetails(const VkPhysicalDevice &device) {
 	SwapchainDetails swapChainDetails;
 	// Get surface capabilities for given device and surface.
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, _surface, &swapChainDetails.surfaceCapabilities);
