@@ -23,6 +23,7 @@ public:
 	VulkanRenderer();
 	~VulkanRenderer();
 	int init(GLFWwindow *newWindow);
+	void draw();
 	void destroy();
 private:
 	// FUNCTIONS
@@ -38,10 +39,11 @@ private:
 	void createCommandPool();
 	void createCommandBuffers();
 	void recordCommands();
-	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
-	VkShaderModule createShaderModule(const vector<char> &code);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
+	void createSync();
+	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
+	VkShaderModule createShaderModule(const vector<char> &code);
 	// - get functions
 	void getPhysicalDevice();
 	vector<const char *> getRequiredExtensions();
@@ -83,6 +85,10 @@ private:
 
 	// POOLS
 	VkCommandPool _graphicsCommandPool;
+
+	// SYNC
+	VkSemaphore _imageAvailable;
+	VkSemaphore _renderFinished;
 
 	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;

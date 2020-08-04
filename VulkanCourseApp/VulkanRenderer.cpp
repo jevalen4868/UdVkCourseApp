@@ -30,6 +30,7 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createCommandPool();
 		createCommandBuffers();
 		recordCommands();
+		createSync();
 	}
 	catch (const std::runtime_error &e) {
 		printf("ERROR: %s\n", e.what());
@@ -39,8 +40,18 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 	return 0;
 }
 
-void VulkanRenderer::destroy() {
+void VulkanRenderer::draw() {
+	// Get next available image to draw to and set something to signal when we're finished with the image, a semaphore? TODO check this with more advanced techniques.
 	
+	// Submit command buffer to queeu for exec, making sure it waits for the image to be signaled as available before drawing
+	// and signals when it has finished rendering.
+	
+	// Present image to screen when it has signaled finished rendering.
+}
+
+void VulkanRenderer::destroy() {
+	vkDestroySemaphore(_mainDevice.logicalDevice, _renderFinished, nullptr);
+	vkDestroySemaphore(_mainDevice.logicalDevice, _imageAvailable, nullptr);
 	vkDestroyCommandPool(_mainDevice.logicalDevice, _graphicsCommandPool, nullptr);
 	for (const auto &framebuffer : _swapchainFramebuffers) {
 		vkDestroyFramebuffer(_mainDevice.logicalDevice, framebuffer, nullptr);
@@ -653,6 +664,15 @@ void VulkanRenderer::createDebugMessengerExtension() {
 		throw std::runtime_error("Failed to create the debug messenger.");
 		// return VK_ERROR_EXTENSION_NOT_PRESENT; could use this in a diff impl.
 	}
+}
+
+void VulkanRenderer::createSync() {
+	VkSemaphoreCreateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;		
+	if (vkCreateSemaphore(_mainDevice.logicalDevice, &info, nullptr, &_imageAvailable) != VK_SUCCESS
+		|| vkCreateSemaphore(_mainDevice.logicalDevice, &info, nullptr, &_renderFinished) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create a semaphore.");
+	}		
 }
 
 void VulkanRenderer::getPhysicalDevice() {
