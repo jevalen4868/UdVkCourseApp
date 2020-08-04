@@ -26,6 +26,7 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createSwapChain();
 		createRenderPass();
 		createGraphicsPipeline();
+		createCommandPool();
 	}
 	catch (const std::runtime_error &e) {
 		printf("ERROR: %s\n", e.what());
@@ -36,6 +37,8 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 }
 
 void VulkanRenderer::destroy() {
+	
+	vkDestroyCommandPool(_mainDevice.logicalDevice, _graphicsCommandPool, nullptr);
 	for (const auto &framebuffer : _swapchainFramebuffers) {
 		vkDestroyFramebuffer(_mainDevice.logicalDevice, framebuffer, nullptr);
 	}
@@ -440,7 +443,68 @@ void VulkanRenderer::createCommandPool() {
 	// Create a graphics queue family command pool.
 	VkResult result{ vkCreateCommandPool(_mainDevice.logicalDevice, &info, nullptr, &_graphicsCommandPool) };
 	if (result != VK_SUCCESS) {
-		throw std::runtime_error("Failed to create a frame buffer.");
+		throw std::runtime_error("Failed to create a command pool.");
+	}
+}
+
+void VulkanRenderer::createCommandBuffers() {
+	// 1:1, Resize command buffer
+	_commandBuffers.resize(_swapchainFramebuffers.size());
+
+	VkCommandBufferAllocateInfo info{};
+	info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	info.commandPool = _graphicsCommandPool;
+	info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // PRIMARY Executed by queue, can't be called by other buffers. 
+	// SECONDARY means buffer can't be called directly, called by other buffers via "vkCmdExecuteCommands" when recording commands in primary buffer.
+	info.commandBufferCount = static_cast<uint32_t>(_commandBuffers.size());
+
+	// Allocate command buffers and place handles in array of buffers.
+	VkResult result{ vkAllocateCommandBuffers(_mainDevice.logicalDevice, &info, _commandBuffers.data()) };
+	if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to allocate command buffers..");
+	}
+}
+
+void VulkanRenderer::recordCommands() {
+	VkCommandBufferBeginInfo commandBufferBeginInfo{};
+	commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // buffer can be resubmitted when it is already submitted and waiting execution.
+
+	// Info about how to begin the render pass. Only needed for graphical applications.
+	VkRenderPassBeginInfo renderPassBeginInfo{};
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
+	renderPassBeginInfo.renderPass = _renderPass;
+	renderPassBeginInfo.renderArea.offset = { 0, 0 }; // Start point of render pass in pixels.
+	renderPassBeginInfo.renderArea.extent = _swapchainExtent; // Size of region to run render pass on (starting at offset).
+	VkClearValue clearValues[] = {
+		{0.6f, 0.65f, 0.5f, 1.0f}
+	};
+	renderPassBeginInfo.pClearValues = clearValues; // TODO add depth attachment clear value.
+	renderPassBeginInfo.clearValueCount = 1; 
+
+	for (size_t i{ 0 }; i < _commandBuffers.size(); i++) {
+		renderPassBeginInfo.framebuffer = _swapchainFramebuffers[i];
+
+		// Start recording commands.
+		if (vkBeginCommandBuffer(_commandBuffers[i], &commandBufferBeginInfo) != VK_SUCCESS) {
+				throw std::runtime_error("Failed to start recording a command buffer.");
+		}		
+
+		vkCmdBeginRenderPass(_commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		// Bind pipeline to be used in render pass.
+		vkCmdBindPipeline(_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
+
+		// Execute our pipeline.
+		vkCmdDraw(_commandBuffers[i], 3, 1, 0, 0);
+		// gl_InstanceIndex can be used in the shader for the instance count.
+
+		vkCmdEndRenderPass(_commandBuffers[i]);
+
+		// Stop recording		
+		if (vkEndCommandBuffer(_commandBuffers[i]) != VK_SUCCESS) {
+			throw std::runtime_error("Failed to stop recording a command buffer.");
+		}	
 	}
 }
 

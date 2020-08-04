@@ -36,6 +36,8 @@ private:
 	void createGraphicsPipeline();
 	void createFramebuffers();
 	void createCommandPool();
+	void createCommandBuffers();
+	void recordCommands();
 	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
 	VkShaderModule createShaderModule(const vector<char> &code);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
@@ -82,10 +84,11 @@ private:
 	// POOLS
 	VkCommandPool _graphicsCommandPool;
 
-	vector<VkFramebuffer> _swapchainFramebuffers;
-
 	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;
+	vector<VkFramebuffer> _swapchainFramebuffers;
+	vector<VkCommandBuffer> _commandBuffers;
+
 	const vector<const char *> _validationLayers {
 		"VK_LAYER_KHRONOS_validation",
 	};
