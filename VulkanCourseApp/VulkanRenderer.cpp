@@ -26,7 +26,10 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createSwapChain();
 		createRenderPass();
 		createGraphicsPipeline();
+		createFramebuffers();
 		createCommandPool();
+		createCommandBuffers();
+		recordCommands();
 	}
 	catch (const std::runtime_error &e) {
 		printf("ERROR: %s\n", e.what());
@@ -472,7 +475,7 @@ void VulkanRenderer::recordCommands() {
 
 	// Info about how to begin the render pass. Only needed for graphical applications.
 	VkRenderPassBeginInfo renderPassBeginInfo{};
-	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO;
+	renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassBeginInfo.renderPass = _renderPass;
 	renderPassBeginInfo.renderArea.offset = { 0, 0 }; // Start point of render pass in pixels.
 	renderPassBeginInfo.renderArea.extent = _swapchainExtent; // Size of region to run render pass on (starting at offset).
