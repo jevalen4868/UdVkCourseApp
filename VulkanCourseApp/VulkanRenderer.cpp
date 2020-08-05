@@ -41,12 +41,40 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 }
 
 void VulkanRenderer::draw() {
-	// Get next available image to draw to and set something to signal when we're finished with the image, a semaphore? TODO check this with more advanced techniques.
-	
+	// Get next available image to draw to and set something to signal when we're finished with the image, a semaphore?
+	uint32_t imageIndex;
+	vkAcquireNextImageKHR(_mainDevice.logicalDevice, _swapchain, numeric_limits<uint64_t>::max(), _imageAvailable, VK_NULL_HANDLE, &imageIndex);
+
 	// Submit command buffer to queeu for exec, making sure it waits for the image to be signaled as available before drawing
 	// and signals when it has finished rendering.
-	
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &_imageAvailable; // Executes up to where we try to write to the image.
+	VkPipelineStageFlags waitStages []{
+		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+	};
+	submitInfo.pWaitDstStageMask = waitStages; // Stages to check semaphore at.
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &_commandBuffers[imageIndex]; // Command buffer to submit.
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &_renderFinished; // Semaphore to signal when the command buffer is finished.
+
+	if (vkQueueSubmit(_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to submit to graphics queue.");
+	}
+
 	// Present image to screen when it has signaled finished rendering.
+	VkPresentInfoKHR presentInfo{};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &_renderFinished; // Semaphores to wait on.
+	presentInfo.swapchainCount = 1; 
+	presentInfo.pSwapchains = &_swapchain; // Swapchains to present to.
+	presentInfo.pImageIndices = &imageIndex; // Indices of images in swapchains to present.
+	if (vkQueuePresentKHR(_presentationQueue, &presentInfo) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to present image to presentation queue.");
+	}
 }
 
 void VulkanRenderer::destroy() {
