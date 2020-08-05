@@ -87,8 +87,8 @@ private:
 	VkCommandPool _graphicsCommandPool;
 
 	// SYNC
-	VkSemaphore _imageAvailable;
-	VkSemaphore _renderFinished;
+	vector<VkSemaphore> _imageAvailable;
+	vector<VkSemaphore> _renderFinished;
 
 	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;

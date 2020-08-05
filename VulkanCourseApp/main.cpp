@@ -4,6 +4,7 @@
 #include <stdexcept>
 #include <vector>
 #include <iostream>
+#include <chrono>
 
 #include "VulkanRenderer.h"
 
@@ -32,6 +33,7 @@ int main() {
 	if (vulkanRenderer.init(window) == EXIT_FAILURE) {
 		return EXIT_FAILURE;
 	}
+
 
 	// game loop
 	while (!glfwWindowShouldClose(window)) {

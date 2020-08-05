@@ -78,6 +78,8 @@ void VulkanRenderer::draw() {
 }
 
 void VulkanRenderer::destroy() {
+	// wait for device to be finished.
+	vkDeviceWaitIdle(_mainDevice.logicalDevice);
 	vkDestroySemaphore(_mainDevice.logicalDevice, _renderFinished, nullptr);
 	vkDestroySemaphore(_mainDevice.logicalDevice, _imageAvailable, nullptr);
 	vkDestroyCommandPool(_mainDevice.logicalDevice, _graphicsCommandPool, nullptr);
@@ -345,7 +347,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 	viewportStateCreateInfo.scissorCount = 1;
 	viewportStateCreateInfo.pScissors = &scissor;
 
-	// - DYNAMIC STATES - 
+	/* - DYNAMIC STATES - 
 	// Dynamic states to enable
 	vector<VkDynamicState> dynamicStateEnables(2);
 	// Need to consider resizing swapchain and depth buffer.
@@ -356,7 +358,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 	dynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
 	dynamicStateCreateInfo.dynamicStateCount = static_cast<uint32_t> (dynamicStateEnables.size());
 	dynamicStateCreateInfo.pDynamicStates = dynamicStateEnables.data();
-
+	*/
 	// - RASTERIZER
 	VkPipelineRasterizationStateCreateInfo rasterStateCreateInfo{};
 	rasterStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -384,7 +386,7 @@ void VulkanRenderer::createGraphicsPipeline() {
 
 	// Blending uses equation: (srcColorBlendFactor * newColor) colorBlendOp (destColorBlendFactor * oldColor)
 	colorBlendState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	colorBlendState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA; 
+	colorBlendState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA; 
 	colorBlendState.colorBlendOp = VK_BLEND_OP_ADD;
 	// Summarized: (VK_BLEND_FACTOR_SRC_APLHA * newColor) + (VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA * oldColor)
 	//				(newColorAlpha * newColor) + ((1 - newColorAlpha) * oldColor);
@@ -571,15 +573,10 @@ void VulkanRenderer::createRenderPass() {
 	colorAttRef.attachment = 0; // Use first attachment in list passed to render pass.
 	colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	
-	// Info about a particular subpass that the render pass is using.
-	vector<VkSubpassDescription> subpasses(1);
-	{
-		VkSubpassDescription subpass {};
-		subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Pipeline type subpass is to be bound to.
-		subpass.colorAttachmentCount = 1;
-		subpass.pColorAttachments = &colorAttRef;
-		subpasses.push_back(subpass);
-	}
+	VkSubpassDescription subpass {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Pipeline type subpass is to be bound to.
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttRef;
 
 	// Need to determine when layout transitions occur using subpass dependencies.
 	array<VkSubpassDependency, 2> subpassDependencies;
@@ -612,7 +609,7 @@ void VulkanRenderer::createRenderPass() {
 	createInfo.attachmentCount = 1;
 	createInfo.pAttachments = &colorAtt;
 	createInfo.subpassCount = 1;
-	createInfo.pSubpasses = subpasses.data();
+	createInfo.pSubpasses = &subpass;
 	createInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	createInfo.pDependencies = subpassDependencies.data();
 		

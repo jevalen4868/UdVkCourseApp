@@ -8,6 +8,8 @@ using std::string;
 using std::ifstream;
 using std::ios;
 
+const int MAX_FRAME_DRAWS = 2;
+
 const vector<const char *> DEVICE_EXTENSIONS{
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
