@@ -62,6 +62,7 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &surfaceCapabilities);
 
 	// VARS
+	int _currentFrame{ 0 };
 	GLFWwindow *_window;
 
 	// vulkan components
@@ -89,6 +90,7 @@ private:
 	// SYNC
 	vector<VkSemaphore> _imageAvailable;
 	vector<VkSemaphore> _renderFinished;
+	vector<VkFence> _drawFences;
 
 	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;
