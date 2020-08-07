@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <fstream>
+#include <glm/glm.hpp>
 
 using std::vector;
 using std::string;
@@ -12,6 +13,10 @@ const int MAX_FRAME_DRAWS = 2;
 
 const vector<const char *> DEVICE_EXTENSIONS{
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+};
+
+struct Vertex {
+	glm::vec3 pos; // vertex position (x, y, z)
 };
 
 // Indices (locations) of Queue Families (if the exist at all)
