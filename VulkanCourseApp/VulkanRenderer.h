@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include "Utilities.h"
+#include "Mesh.h"
 
 using std::vector;
 using std::set;
@@ -64,6 +65,9 @@ private:
 	// VARS
 	int _currentFrame{ 0 };
 	GLFWwindow *_window;
+
+	// Scene Objects
+	Mesh _firstMesh;
 
 	// vulkan components
 	VkInstance _instance;

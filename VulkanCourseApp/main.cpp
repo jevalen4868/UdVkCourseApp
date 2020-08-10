@@ -13,6 +13,7 @@ using std::vector;
 
 GLFWwindow *window;
 VulkanRenderer vulkanRenderer;
+float fps{ 144.0f / 1000.0f };
 
 void initWindow(string wName = "Test Window", const int width = 800, const int height = 600) {
 	// init glfw
@@ -34,11 +35,15 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-
+	auto startTime{ std::chrono::high_resolution_clock::now() };
+	auto endTime{ std::chrono::high_resolution_clock::now() };
 	// game loop
 	while (!glfwWindowShouldClose(window)) {
+
 		glfwPollEvents();
 		vulkanRenderer.draw();
+
+		std::chrono::duration<float, std::milli> runTime(endTime - startTime);
 	}
 
 	vulkanRenderer.destroy();

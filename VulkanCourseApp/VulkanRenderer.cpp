@@ -23,6 +23,17 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createSurface();
 		getPhysicalDevice();
 		createLogicalDevice();
+		// Create a mesh.
+		vector<Vertex> meshVertices{
+			{{0.4f, -0.4f, 0.0f}, { 1.0f, 0.0f, 0.0f}},
+			{{0.4f, 0.4f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+			{{-0.4f, 0.4f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+
+			{{-0.4f, 0.4f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+			{{-0.4f, -0.4f, 0.0f}, {1.0f, 1.0f, 0.0f}},
+			{{0.4f, -0.4f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+		};
+		_firstMesh = Mesh(_mainDevice.physicalDevice, _mainDevice.logicalDevice, &meshVertices);
 		createSwapChain();
 		createRenderPass();
 		createGraphicsPipeline();
@@ -90,6 +101,9 @@ void VulkanRenderer::draw() {
 void VulkanRenderer::destroy() {
 	// wait for device to be finished.
 	vkDeviceWaitIdle(_mainDevice.logicalDevice);
+
+	_firstMesh.destroyVertexBuffer();
+
 	for (size_t i{ 0 }; i < MAX_FRAME_DRAWS; i++) {
 		vkDestroySemaphore(_mainDevice.logicalDevice, _renderFinished[i], nullptr);
 		vkDestroySemaphore(_mainDevice.logicalDevice, _imageAvailable[i], nullptr);
@@ -335,13 +349,19 @@ void VulkanRenderer::createGraphicsPipeline() {
 	// VK_VERTEX_INPUT_RATE_INSTANCE : Move to a vertex for the next instance.
 
 	// How the data for an attribute is defined within a vertex.
-	array<VkVertexInputAttributeDescription, 1> attrDescs;
+	array<VkVertexInputAttributeDescription, 2> attrDescs;
 
 	// Position attribute.
 	attrDescs[0].binding = 0; // Which binding the data is at. (Should be the same as above.)
 	attrDescs[0].location = 0; // Location in shader where data will be read from.
 	attrDescs[0].format = VK_FORMAT_R32G32B32_SFLOAT; // Format the data will take. (Also helps define size of data)
 	attrDescs[0].offset = offsetof(Vertex, pos);
+
+	// Color attribute.
+	attrDescs[1].binding = 0; 
+	attrDescs[1].location = 1; 
+	attrDescs[1].format = VK_FORMAT_R32G32B32_SFLOAT; 
+	attrDescs[1].offset = offsetof(Vertex, col);
 
 	// - VERTEX INPUT - put in vertex descriptions when resources created.
 	VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
@@ -569,8 +589,13 @@ void VulkanRenderer::recordCommands() {
 		// Bind pipeline to be used in render pass.
 		vkCmdBindPipeline(_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
 
+		VkBuffer vertexBuffers [] { _firstMesh.getVertexBuffer() }; // Buffers to bind.
+		VkDeviceSize offsets [] { 0 }; // Offsets into buffers being bound.
+		// For firstBinding var, imagine shader has a implicit binding = 0 value.
+		vkCmdBindVertexBuffers(_commandBuffers[i], 0, 1, vertexBuffers, offsets); // Command to bind vertex buffer before drawing with them.
+
 		// Execute our pipeline.
-		vkCmdDraw(_commandBuffers[i], 3, 1, 0, 0);
+		vkCmdDraw(_commandBuffers[i], static_cast<uint32_t>(_firstMesh.getVertexCount()), 1, 0, 0);
 		// gl_InstanceIndex can be used in the shader for the instance count.
 
 		vkCmdEndRenderPass(_commandBuffers[i]);
