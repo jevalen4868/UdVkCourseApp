@@ -43,7 +43,7 @@ int main() {
 		glfwPollEvents();
 		vulkanRenderer.draw();
 
-		std::chrono::duration<float, std::milli> runTime(endTime - startTime);
+		std::chrono::duration<float, std::milli> runTime(endTime - startTime); 
 	}
 
 	vulkanRenderer.destroy();

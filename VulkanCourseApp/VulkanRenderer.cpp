@@ -1,14 +1,5 @@
 #include "VulkanRenderer.h"
 
-// refer to https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers for higher levels of configuration.
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
-	const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-	void *pUserData) {
-	printf("validation layer=%s\n", pCallbackData->pMessage);
-	return VK_FALSE;
-}
-
 VulkanRenderer::VulkanRenderer() {
 }
 

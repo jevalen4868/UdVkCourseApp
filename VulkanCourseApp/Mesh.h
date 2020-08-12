@@ -28,7 +28,6 @@ private:
 	VkPhysicalDevice _physicalDevice;
 	VkDevice _device;
 
-	void createVertexBuffer(vector<Vertex> *vertices);
-	uint32_t findMemoryTypeIndex(uint32_t allowedTypes, VkMemoryPropertyFlags properties);
+	void createVertexBuffer(vector<Vertex> *vertices);	
 };
 
