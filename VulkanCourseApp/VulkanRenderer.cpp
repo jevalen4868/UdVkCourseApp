@@ -21,20 +21,32 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createCommandPool();
 		// Create a mesh.
 		// Vertex data.
-		vector<Vertex> meshVertices{
-			{{0.4f, -0.4f, 0.0f}, { 1.0f, 0.0f, 0.0f}}, // 0
-			{{0.4f, 0.4f, 0.0f}, {0.0f, 1.0f, 0.0f}}, // 1
-			{{-0.4f, 0.4f, 0.0f}, {0.0f, 0.0f, 1.0f}}, // 2			
-			{{-0.4f, -0.4f, 0.0f}, {1.0f, 1.0f, 0.0f}}, // 3			
+		vector<Vertex> meshVertices00{
+			{{-0.1f, -0.4f, 0.0f}, { 1.0f, 0.0f, 0.0f}}, // 0
+			{{-0.1f, 0.4f, 0.0f}, {0.0f, 1.0f, 0.0f}}, // 1
+			{{-0.9f, 0.4f, 0.0f}, {0.0f, 0.0f, 1.0f}}, // 2			
+			{{-0.9f, -0.4f, 0.0f}, {1.0f, 1.0f, 0.0f}}, // 3			
 		};
+
+		vector<Vertex> meshVertices01{
+			{{0.9f, -0.4f, 0.0f}, { 1.0f, 0.0f, 0.0f}}, // 0
+			{{0.9f, 0.4f, 0.0f}, {0.0f, 1.0f, 0.0f}}, // 1
+			{{0.1f, 0.4f, 0.0f}, {0.0f, 0.0f, 1.0f}}, // 2			
+			{{0.1f, -0.4f, 0.0f}, {1.0f, 1.0f, 0.0f}}, // 3			
+		};
+
 		// Index data.
 		vector<uint32_t> meshIndices{
 			0, 1, 2,
 			2, 3, 0
 		};
 
-		_firstMesh = Mesh(_mainDevice.physicalDevice, _mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool, 
-			&meshVertices, &meshIndices);
+		_meshes.push_back(Mesh(_mainDevice.physicalDevice, _mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool, 
+			&meshVertices00, &meshIndices));
+
+		_meshes.push_back(Mesh(_mainDevice.physicalDevice, _mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool,
+			&meshVertices01, &meshIndices));
+
 		createCommandBuffers();
 		recordCommands();
 		createSync();
@@ -56,8 +68,9 @@ void VulkanRenderer::draw() {
 	
 	// Get index of next image to draw to.
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(_mainDevice.logicalDevice, _swapchain, numeric_limits<uint64_t>::max(), _imageAvailable[_currentFrame], VK_NULL_HANDLE, &imageIndex);
-
+	if (vkAcquireNextImageKHR(_mainDevice.logicalDevice, _swapchain, numeric_limits<uint64_t>::max(), _imageAvailable[_currentFrame], VK_NULL_HANDLE, &imageIndex) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to submit to acquire next image.");
+	}
 
 	// Submit command buffer to queeu for exec, making sure it waits for the image to be signaled as available before drawing
 	// and signals when it has finished rendering.
@@ -98,7 +111,9 @@ void VulkanRenderer::destroy() {
 	// wait for device to be finished.
 	vkDeviceWaitIdle(_mainDevice.logicalDevice);
 
-	_firstMesh.destroyBuffers();
+	for (Mesh mesh : _meshes) {
+		mesh.destroyBuffers();
+	}
 
 	for (size_t i{ 0 }; i < MAX_FRAME_DRAWS; i++) {
 		vkDestroySemaphore(_mainDevice.logicalDevice, _renderFinished[i], nullptr);
@@ -585,22 +600,22 @@ void VulkanRenderer::recordCommands() {
 		// Bind pipeline to be used in render pass.
 		vkCmdBindPipeline(_commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
 
-		VkBuffer vertexBuffers [] { _firstMesh.getVertexBuffer() }; // Buffers to bind.
-		VkDeviceSize offsets [] { 0 }; // Offsets into buffers being bound.
-		// For firstBinding var, imagine shader has a implicit binding = 0 value.
-		vkCmdBindVertexBuffers(_commandBuffers[i], 0, 1, vertexBuffers, offsets); // Command to bind vertex buffer before drawing with them.
+		for (Mesh mesh : _meshes) {
+			VkBuffer vertexBuffers []{ mesh.getVertexBuffer() }; // Buffers to bind.
+			VkDeviceSize offsets []{ 0 }; // Offsets into buffers being bound.
+			// For firstBinding var, imagine shader has a implicit binding = 0 value.
+			vkCmdBindVertexBuffers(_commandBuffers[i], 0, 1, vertexBuffers, offsets); // Command to bind vertex buffer before drawing with them.
 
-		// Bind mesh index buffer with 0 offset and using uint32_t type.
-		vkCmdBindIndexBuffer(_commandBuffers[i], _firstMesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+			// Bind mesh index buffer with 0 offset and using uint32_t type.
+			vkCmdBindIndexBuffer(_commandBuffers[i], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-		// Execute our pipeline.
-		vkCmdDrawIndexed(_commandBuffers[i], _firstMesh.getIndexCount(), 1
-			, 0 // "index" of index to start at.
-			, 0 // "offset" of vertex to start at.
-			, 0); // which instance of mesh is first. to draw
-		//vkCmdDraw(_commandBuffers[i], static_cast<uint32_t>(_firstMesh.getVertexCount()), 1, 0, 0);
-		// gl_InstanceIndex can be used in the shader for the instance count.
-
+			// Execute our pipeline.
+			vkCmdDrawIndexed(_commandBuffers[i], mesh.getIndexCount(), 1
+				, 0 // "index" of index to start at.
+				, 0 // "offset" of vertex to start at.
+				, 0); // which instance of mesh is first. to draw		
+			// gl_InstanceIndex can be used in the shader for the instance count.
+		}
 		vkCmdEndRenderPass(_commandBuffers[i]);
 
 		// Stop recording		

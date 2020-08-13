@@ -67,7 +67,7 @@ private:
 	GLFWwindow *_window;
 
 	// Scene Objects
-	Mesh _firstMesh;
+	vector<Mesh> _meshes;
 
 	// vulkan components
 	VkInstance _instance;
