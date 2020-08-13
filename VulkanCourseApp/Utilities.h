@@ -118,6 +118,66 @@ static void createBuffer(VkPhysicalDevice phyDev, VkDevice device, VkDeviceSize 
 
 }
 
+static void copyBuffer(VkDevice device, VkQueue transferQueue, VkCommandPool transferCommandPool,
+	VkBuffer srcBuf, VkBuffer dstBuf, VkDeviceSize bufSize) {
+	// Command buffer to hodl transfer command.
+	VkCommandBuffer transferCommandBuffer;
+		
+	// Command buffer details
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandPool = transferCommandPool;
+	allocInfo.commandBufferCount = 1;
+
+	// Allocate command buffer from pool.
+	if (vkAllocateCommandBuffers(device, &allocInfo, &transferCommandBuffer) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to allocate transfer command buffer.");
+	}
+		
+	// Information to begin the command buffer record.
+	VkCommandBufferBeginInfo beginInfo{};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT; // We're only using the command buffer once. Set up for one time use.
+
+	// Begin recording transfer commands.
+	if (vkBeginCommandBuffer(transferCommandBuffer, &beginInfo) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to begin transfer command buffer.");
+	}
+
+	// Region of data to copy from and to.
+	VkBufferCopy bufferCopyRegion{};
+	bufferCopyRegion.srcOffset = 0; // Copy from the beginning.
+	bufferCopyRegion.dstOffset = 0; // Copy to the start of the dst.
+	bufferCopyRegion.size = bufSize;
+
+	// Command to copy our source buf to dst buf.
+	vkCmdCopyBuffer(transferCommandBuffer, srcBuf, dstBuf, 1, &bufferCopyRegion);
+
+	if (vkEndCommandBuffer(transferCommandBuffer) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to end transfer command buffer.");
+	}	
+
+	// Queue submission info.
+	VkSubmitInfo submitInfo{};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &transferCommandBuffer;
+
+	// Submit transfer commands and wait until complete
+	if (vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to submit transfer queue.");
+	}
+
+	if (vkQueueWaitIdle(transferQueue) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to wait for queue.");
+	}
+
+	// Free temp cmd buf back to pool
+	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+
+}
+
 // refer to https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Validation_layers for higher levels of configuration.
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT messageType,
