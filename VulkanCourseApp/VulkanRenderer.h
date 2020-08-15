@@ -35,6 +35,7 @@ private:
 	void createSurface();
 	void createSwapChain();
 	void createRenderPass();
+	void createDescriptorSetLayout();
 	void createGraphicsPipeline();
 	void createFramebuffers();
 	void createCommandPool();
@@ -66,9 +67,6 @@ private:
 	int _currentFrame{ 0 };
 	GLFWwindow *_window;
 
-	// Scene Objects
-	vector<Mesh> _meshes;
-
 	// vulkan components
 	VkInstance _instance;
 	VkQueue _graphicsQueue;
@@ -91,12 +89,27 @@ private:
 	// POOLS
 	VkCommandPool _graphicsCommandPool;
 
+	// DESCRIPTORS
+	VkDescriptorSetLayout _descSetLayout;
+
+	// Scene Settings
+	struct ModelViewProjection {
+		glm::mat4 proj;
+		glm::mat4 view;
+		glm::mat4 model;
+	} _mvp;
+
+	// variable length vars.
+	// Scene Objects
+	vector<Mesh> _meshes;
+	// - Need one for each command buffer
+	vector<VkBuffer> _uniformBuffer;
+
 	// SYNC
 	vector<VkSemaphore> _imageAvailable;
 	vector<VkSemaphore> _renderFinished;
 	vector<VkFence> _drawFences;
 
-	// variable length vars.
 	vector<SwapchainImage> _swapchainImages;
 	vector<VkFramebuffer> _swapchainFramebuffers;
 	vector<VkCommandBuffer> _commandBuffers;

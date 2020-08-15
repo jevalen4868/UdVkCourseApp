@@ -16,9 +16,11 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createLogicalDevice();		
 		createSwapChain();
 		createRenderPass();
+		createDescriptorSetLayout();
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+
 		// Create a mesh.
 		// Vertex data.
 		vector<Vertex> meshVertices00{
@@ -124,6 +126,8 @@ void VulkanRenderer::destroy() {
 	for (const auto &framebuffer : _swapchainFramebuffers) {
 		vkDestroyFramebuffer(_mainDevice.logicalDevice, framebuffer, nullptr);
 	}
+
+	vkDestroyDescriptorSetLayout(_mainDevice.logicalDevice, _descSetLayout, nullptr);
 	vkDestroyPipeline(_mainDevice.logicalDevice, _graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(_mainDevice.logicalDevice, _pipelineLayout, nullptr);
 	vkDestroyRenderPass(_mainDevice.logicalDevice, _renderPass, nullptr);
@@ -463,17 +467,17 @@ void VulkanRenderer::createGraphicsPipeline() {
 	colorBlendStateInfo.attachmentCount = 1;
 	colorBlendStateInfo.pAttachments = &colorBlendState;
 	
-	// - PIPELINE LAYOUT: (TODO, APPLYO FUTURE DESCRIPTOR SET LAYOUTS) -
-	VkPipelineLayoutCreateInfo pipelineLayoutCreteInfo{};
-	pipelineLayoutCreteInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreteInfo.setLayoutCount = 0;
-	pipelineLayoutCreteInfo.pSetLayouts = nullptr;
-	pipelineLayoutCreteInfo.pushConstantRangeCount = 0;
-	pipelineLayoutCreteInfo.pPushConstantRanges = nullptr;
+	// - PIPELINE LAYOUT
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	pipelineLayoutCreateInfo.pSetLayouts = &_descSetLayout;
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 	
 	// Create pipeline layout;
 	{
-		VkResult result{ vkCreatePipelineLayout(_mainDevice.logicalDevice, &pipelineLayoutCreteInfo, nullptr, &_pipelineLayout) };
+		VkResult result{ vkCreatePipelineLayout(_mainDevice.logicalDevice, &pipelineLayoutCreateInfo, nullptr, &_pipelineLayout) };
 		if (result != VK_SUCCESS) {
 			throw std::runtime_error("Failed to create an image view.");
 		}
@@ -609,19 +613,19 @@ void VulkanRenderer::recordCommands() {
 			// Bind mesh index buffer with 0 offset and using uint32_t type.
 			vkCmdBindIndexBuffer(_commandBuffers[i], mesh.getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-			// Execute our pipeline.
-			vkCmdDrawIndexed(_commandBuffers[i], mesh.getIndexCount(), 1
-				, 0 // "index" of index to start at.
-				, 0 // "offset" of vertex to start at.
-				, 0); // which instance of mesh is first. to draw		
-			// gl_InstanceIndex can be used in the shader for the instance count.
+// Execute our pipeline.
+vkCmdDrawIndexed(_commandBuffers[i], mesh.getIndexCount(), 1
+	, 0 // "index" of index to start at.
+	, 0 // "offset" of vertex to start at.
+	, 0); // which instance of mesh is first. to draw		
+// gl_InstanceIndex can be used in the shader for the instance count.
 		}
 		vkCmdEndRenderPass(_commandBuffers[i]);
 
 		// Stop recording		
 		if (vkEndCommandBuffer(_commandBuffers[i]) != VK_SUCCESS) {
 			throw std::runtime_error("Failed to stop recording a command buffer.");
-		}	
+		}
 	}
 }
 
@@ -645,15 +649,15 @@ void VulkanRenderer::createRenderPass() {
 	VkAttachmentReference colorAttRef{};
 	colorAttRef.attachment = 0; // Use first attachment in list passed to render pass.
 	colorAttRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	
-	VkSubpassDescription subpass {};
+
+	VkSubpassDescription subpass{};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS; // Pipeline type subpass is to be bound to.
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttRef;
 
 	// Need to determine when layout transitions occur using subpass dependencies.
 	array<VkSubpassDependency, 2> subpassDependencies;
-	
+
 	// Conversion from VK_IMAGE_LAYOUT_UNDEFINED to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL.
 	// Transition must happen after ...
 	subpassDependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL; // Subpass index, subpass external means anything that takes place outside of render pass.
@@ -668,7 +672,7 @@ void VulkanRenderer::createRenderPass() {
 	// Conversion from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR.
 	// Transition must happen after ...
 	subpassDependencies[1].srcSubpass = 0; // Subpass index, subpass external means anything that takes place outside of render pass.
-	subpassDependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; 
+	subpassDependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	subpassDependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	// Transition must happen before ...
 	subpassDependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
@@ -685,12 +689,32 @@ void VulkanRenderer::createRenderPass() {
 	createInfo.pSubpasses = &subpass;
 	createInfo.dependencyCount = static_cast<uint32_t>(subpassDependencies.size());
 	createInfo.pDependencies = subpassDependencies.data();
-		
+
 	VkResult result{ vkCreateRenderPass(_mainDevice.logicalDevice, &createInfo, nullptr, &_renderPass) };
 	if (result != VK_SUCCESS) {
 		throw std::runtime_error("Failed to create the render pass.");
 	}
-	
+
+}
+
+void VulkanRenderer::createDescriptorSetLayout() {
+	// MVP binding info.
+	VkDescriptorSetLayoutBinding mvpLayoutBinding{};
+	mvpLayoutBinding.binding = 0; // Binding point in shader designated by binding number in shader.
+	mvpLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpLayoutBinding.descriptorCount = 1;
+	mvpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // Shader stage to bind to.
+	mvpLayoutBinding.pImmutableSamplers = nullptr; // For texture: can make sampler data immutable.
+
+	// Create layout with given bindings.
+	VkDescriptorSetLayoutCreateInfo descSetLayoutCreateInfo{};
+	descSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descSetLayoutCreateInfo.bindingCount = 1;
+	descSetLayoutCreateInfo.pBindings = &mvpLayoutBinding;
+
+	if(vkCreateDescriptorSetLayout(_mainDevice.logicalDevice, &descSetLayoutCreateInfo, nullptr, &_descSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("Failed to create the descriptor set layout.");
+	}
 }
 
 VkImageView VulkanRenderer::createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags) {
