@@ -2,6 +2,8 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>	
 
 #include <stdexcept>
 #include <vector>
@@ -24,6 +26,7 @@ public:
 	VulkanRenderer();
 	~VulkanRenderer();
 	int init(GLFWwindow *newWindow);
+	void updateModel(const glm::mat4 &model);
 	void draw();
 	void destroy();
 private:
@@ -44,6 +47,10 @@ private:
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
 	void createSync();
+	void createUniformBuffers();
+	void createDescriptorPool();
+	void createDescriptorSets();
+	void updateUniformBuffer(const uint32_t &imageIndex);
 	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
 	VkShaderModule createShaderModule(const vector<char> &code);
 	// - get functions
@@ -91,6 +98,7 @@ private:
 
 	// DESCRIPTORS
 	VkDescriptorSetLayout _descSetLayout;
+	VkDescriptorPool _descPool;
 
 	// Scene Settings
 	struct ModelViewProjection {
@@ -99,11 +107,16 @@ private:
 		glm::mat4 model;
 	} _mvp;
 
+	const size_t _mvpSize = sizeof(ModelViewProjection);
+
 	// variable length vars.
 	// Scene Objects
 	vector<Mesh> _meshes;
+
 	// - Need one for each command buffer
-	vector<VkBuffer> _uniformBuffer;
+	vector<VkBuffer> _uniformBuffers;
+	vector<VkDeviceMemory> _uniformBufMems;
+	vector<VkDescriptorSet> _descSets;
 
 	// SYNC
 	vector<VkSemaphore> _imageAvailable;

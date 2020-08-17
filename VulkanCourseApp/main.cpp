@@ -35,31 +35,45 @@ int main() {
 		return EXIT_FAILURE;
 	}
 
-	auto startTime{ std::chrono::high_resolution_clock::now() };
-	auto endTime{ std::chrono::high_resolution_clock::now() };
-	std::chrono::duration<float, std::milli> runTime(endTime - startTime); 
+	float angle{ 0.0f };
+	float deltaTime{ 0.0f };
+	float lastTime{ 0.0f };
+		
 	// game loop
 	while (!glfwWindowShouldClose(window)) {
-		startTime = std::chrono::high_resolution_clock::now();
-
 		glfwPollEvents();
-		vulkanRenderer.draw();
 
-		endTime = std::chrono::high_resolution_clock::now();
-		runTime = endTime - startTime;		
-		
+		float startTime = glfwGetTime();
+		deltaTime = startTime - lastTime;
+		lastTime = startTime;
+
 		#ifdef NDEBUG
-		if (runTime.count() > 0.05f) {
-			// TODO make sure 5 milli is an appropriate value.
-			runTime = std::chrono::duration<float, std::milli>(5.0f);
+		if (deltaTime > 0.05f) {			
+			deltaTime = 0.05f;
 		}
 		#endif	
 		
-		while (runTime.count() < fps) {
+		while ((deltaTime * 1000.0f) < fps) {
 			// printf("%f", runTime.count());
-			endTime = std::chrono::high_resolution_clock::now();
-			runTime = endTime - startTime;
+			lastTime = glfwGetTime();
+			deltaTime = lastTime - startTime;
 		}
+
+		angle += 10.0f * deltaTime;
+		if (angle > 360.0f) {
+			angle -= 360.0f;
+		}
+
+		vulkanRenderer.updateModel(
+			glm::rotate(
+				glm::mat4(1.0f),
+				glm::radians(angle),
+				glm::vec3(0.0f, 0.0f, 1.0f)
+			)
+		);
+
+		vulkanRenderer.draw();
+
 	}
 
 	vulkanRenderer.destroy();

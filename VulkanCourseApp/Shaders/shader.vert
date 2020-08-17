@@ -1,9 +1,9 @@
 #version 450 // Use GLSL Version 4.5.0
 
-layout(binding = 0, location = 0) in vec3 pos;
-layout(binding = 0, location = 1) in vec3 col;
+layout(location = 0) in vec3 pos;
+layout(location = 1) in vec3 col;
 
-layout(binding = 0) uniform ModelViewProjection {
+layout(set = 0, binding = 0) uniform ModelViewProjection {
     mat4 proj;
     mat4 view;
     mat4 model;
