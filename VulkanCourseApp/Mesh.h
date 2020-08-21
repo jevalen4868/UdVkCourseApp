@@ -9,6 +9,10 @@
 
 using std::vector;
 
+struct UboModel {
+	glm::mat4 model;
+};
+
 class Mesh
 {
 public:
@@ -16,6 +20,9 @@ public:
 	Mesh(VkPhysicalDevice physicalDevice, VkDevice device, 
 		VkQueue transferQueue, VkCommandPool transferCommandPool, 
 		vector<Vertex> *vertices, vector<uint32_t> *indices);
+
+	void setModel(glm::mat4 model);
+	UboModel getModel();
 
 	int getVertexCount();
 	int getIndexCount();
@@ -36,6 +43,8 @@ private:
 	int _indexCount;
 	VkBuffer _indexBuffer;
 	VkDeviceMemory _indexBufferMemory;
+
+	UboModel _uboModel;
 
 	void createVertexBuffer(VkQueue transferQueue, VkCommandPool transferCommandPool, vector<Vertex> *vertices);
 	void createIndexBuffer(VkQueue transferQueue, VkCommandPool transferCommandPool, vector<uint32_t> *indices);

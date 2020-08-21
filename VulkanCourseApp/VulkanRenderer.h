@@ -26,7 +26,7 @@ public:
 	VulkanRenderer();
 	~VulkanRenderer();
 	int init(GLFWwindow *newWindow);
-	void updateModel(const glm::mat4 &model);
+	void updateModel(const size_t &modelId, const glm::mat4 &model);
 	void draw();
 	void destroy();
 private:
@@ -50,7 +50,8 @@ private:
 	void createUniformBuffers();
 	void createDescriptorPool();
 	void createDescriptorSets();
-	void updateUniformBuffer(const uint32_t &imageIndex);
+	void updateUniformBuffers(const uint32_t &imageIndex);
+	void allocateDynamicBufferTransferSpace();
 	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
 	VkShaderModule createShaderModule(const vector<char> &code);
 	// - get functions
@@ -84,10 +85,13 @@ private:
 	} _mainDevice;
 	VkSurfaceKHR _surface;
 	VkSwapchainKHR _swapchain;
+
+	// UTILITY
 	VkFormat _swapchainImageFormat;
 	VkExtent2D _swapchainExtent;
 	VkDebugUtilsMessengerEXT _debugMessenger;
 	
+
 	// PIPELINE
 	VkRenderPass _renderPass;
 	VkPipelineLayout _pipelineLayout;
@@ -100,22 +104,29 @@ private:
 	VkDescriptorSetLayout _descSetLayout;
 	VkDescriptorPool _descPool;
 
+	VkDeviceSize _minUniBufOffset;
+	size_t _modelUniAlignment;
+	UboModel *_modelTransferSpace;
+
 	// Scene Settings
-	struct ModelViewProjection {
+	struct UboViewProjection {
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::mat4 model;
-	} _mvp;
+	} _uboViewProj;
 
-	const size_t _mvpSize = sizeof(ModelViewProjection);
+	const size_t _uboViewProjSize = sizeof(UboViewProjection);
 
 	// variable length vars.
 	// Scene Objects
 	vector<Mesh> _meshes;
 
 	// - Need one for each command buffer
-	vector<VkBuffer> _uniformBuffers;
-	vector<VkDeviceMemory> _uniformBufMems;
+	vector<VkBuffer> _vpUniformBuffers;
+	vector<VkDeviceMemory> _vpUniformBufMems;
+	
+	vector<VkBuffer> _modelDynUniformBuffers;
+	vector<VkDeviceMemory> _modelDynUniformBufMems;
+	
 	vector<VkDescriptorSet> _descSets;
 
 	// SYNC
