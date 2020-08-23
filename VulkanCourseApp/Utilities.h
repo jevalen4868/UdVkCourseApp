@@ -76,6 +76,8 @@ static uint32_t findMemoryTypeIndex(VkPhysicalDevice phyDev, uint32_t allowedTyp
 			return i;
 		}
 	}
+
+	throw std::runtime_error("Failed to create a memory type index.");
 }
 
 static void createBuffer(VkPhysicalDevice phyDev, VkDevice device, VkDeviceSize bufferSize, 

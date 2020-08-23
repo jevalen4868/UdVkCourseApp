@@ -41,6 +41,7 @@ private:
 	void createDescriptorSetLayout();
 	void createPushConstantRange();
 	void createGraphicsPipeline();
+	void createDepthBufferImage();
 	void createFramebuffers();
 	void createCommandPool();
 	void createCommandBuffers();
@@ -53,12 +54,14 @@ private:
 	void createDescriptorSets();
 	void updateUniformBuffers(const uint32_t &imageIndex);
 	void allocateDynamicBufferTransferSpace();
-	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
-	VkShaderModule createShaderModule(const vector<char> &code);
 	// - get functions
 	void getPhysicalDevice();
-	vector<const char *> getRequiredExtensions();
 	// - support functions
+	VkImage createImage(const uint32_t &width, const uint32_t &height, const VkFormat &format, const VkImageTiling &tiling,
+		const VkImageUsageFlags &usageFlags, const VkMemoryPropertyFlags &memPropFlags, VkDeviceMemory *imageMemory);
+	VkImageView createImageView(const VkImage &image, const VkFormat &format, const VkImageAspectFlags &aspectFlags);
+	VkShaderModule createShaderModule(const vector<char> &code);
+	vector<const char *> getRequiredExtensions();
 	// -- checker functions
 	bool checkInstanceExtensionSupport(const vector<const char *> *checkExtensions);
 	bool checkDeviceExtensionSupport(const VkPhysicalDevice &device);
@@ -71,6 +74,7 @@ private:
 	VkSurfaceFormatKHR chooseBestSurfaceFormat(const vector<VkSurfaceFormatKHR> &formats);
 	VkPresentModeKHR chooseBestPresMode(const vector <VkPresentModeKHR> presModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &surfaceCapabilities);
+	VkFormat chooseSupportedFormat(const vector<VkFormat> &formats, const VkImageTiling &tiling, const VkFormatFeatureFlags &featureFlags);
 
 	// VARS
 	int _currentFrame{ 0 };
@@ -110,6 +114,11 @@ private:
 	Model *_modelTransferSpace;
 
 	VkPushConstantRange _pushConstRange;
+
+	VkImage _depthBufImage;
+	VkDeviceMemory _depthBufImageMem;
+	VkImageView _depthBufImageView;
+	VkFormat _depthBufFormat;
 
 	// Scene Settings
 	struct UboViewProjection {
