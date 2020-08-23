@@ -8,14 +8,20 @@ layout(set = 0, binding = 0) uniform UboViewProjection {
     mat4 view;    
 } uboViewProjection;
 
+// NOT IN USE, LEFT FOR REFERENCE.
 layout(set = 0, binding = 1) uniform UboModel {
     mat4 model;    
 } uboModel;
+
+// Only one push constant block available.
+layout(push_constant) uniform PushModel {
+    mat4 model;
+} pushModel;
 
 layout(location = 0) out vec3 fragCol;
 
 void main() {
     // Matrix multiplication goes right to left.
-    gl_Position = uboViewProjection.proj * uboViewProjection.view * uboModel.model * vec4(pos, 1.0);  
+    gl_Position = uboViewProjection.proj * uboViewProjection.view * pushModel.model * vec4(pos, 1.0);  
     fragCol = col;  
 }

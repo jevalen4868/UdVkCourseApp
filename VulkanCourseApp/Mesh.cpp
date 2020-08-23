@@ -13,15 +13,15 @@ Mesh::Mesh(VkPhysicalDevice physicalDevice, VkDevice device,
 	createVertexBuffer(transferQueue, transferCommandPool, vertices);
 	createIndexBuffer(transferQueue, transferCommandPool, indices);
 
-	_uboModel.model = glm::mat4(1.0f);
+	_model.model = glm::mat4(1.0f);
 }
 
 void Mesh::setModel(glm::mat4 model) {
-	_uboModel.model = model;
+	_model.model = model;
 }
 
-UboModel Mesh::getModel() {
-	return _uboModel;
+Model Mesh::getModel() {
+	return _model;
 }
 
 int Mesh::getVertexCount() {

@@ -5,15 +5,17 @@
 #include <vector>
 #include <iostream>
 #include <chrono>
-
 #include "VulkanRenderer.h"
 
 using std::string;
 using std::vector;
+using std::unique_ptr;
+using std::make_unique;
 
 GLFWwindow *window;
-VulkanRenderer vulkanRenderer;
-float fps{ 1000.0f / 144.0f };
+unique_ptr<VulkanRenderer> vulkanRenderer;
+float constexpr FRAMES_PER_SECOND{ 144.0f };
+float constexpr FPS{ 1000.0f / FRAMES_PER_SECOND };
 
 void initWindow(string wName = "Test Window", const int width = 800, const int height = 600) {
 	// init glfw
@@ -30,8 +32,10 @@ int main() {
 	// create window
 	initWindow("Test Window", 1920, 1080);
 
+	vulkanRenderer = make_unique<VulkanRenderer>();
+
 	// create vulkan renderer instance
-	if (vulkanRenderer.init(window) == EXIT_FAILURE) {
+	if (vulkanRenderer->init(window) == EXIT_FAILURE) {
 		return EXIT_FAILURE;
 	}
 
@@ -53,11 +57,12 @@ int main() {
 		}
 		#endif	
 		
-		while ((deltaTime * 1000.0f) < fps) {
+		/*
+		while ((deltaTime * 1000.0f) < FPS) {
 			// printf("%f", runTime.count());
 			lastTime = glfwGetTime();
 			deltaTime = lastTime - startTime;
-		}
+		}*/
 
 		angle += 10.0f * deltaTime;
 		if (angle > 360.0f) {
@@ -71,16 +76,16 @@ int main() {
 		firstModel = glm::rotate(firstModel, glm::radians(angle), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		secondModel = glm::translate(secondModel, glm::vec3(2.0f, 0.0f, -5.0f));
-		secondModel = glm::rotate(secondModel, glm::radians(-angle * 100), glm::vec3(0.0f, 0.0f, 1.0f));
+		secondModel = glm::rotate(secondModel, glm::radians(-angle * 10), glm::vec3(0.0f, 0.0f, 1.0f));
 
-		vulkanRenderer.updateModel(0, firstModel);
-		vulkanRenderer.updateModel(1, secondModel);
+		vulkanRenderer->updateModel(0, firstModel);
+		vulkanRenderer->updateModel(1, secondModel);
 
-		vulkanRenderer.draw();
+		vulkanRenderer->draw();
 
 	}
 
-	vulkanRenderer.destroy();
+	vulkanRenderer->destroy();
 
 	// destroy window
 	glfwDestroyWindow(window);

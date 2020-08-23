@@ -39,11 +39,12 @@ private:
 	void createSwapChain();
 	void createRenderPass();
 	void createDescriptorSetLayout();
+	void createPushConstantRange();
 	void createGraphicsPipeline();
 	void createFramebuffers();
 	void createCommandPool();
 	void createCommandBuffers();
-	void recordCommands();
+	void recordCommands(const uint32_t &currentImage);
 	void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT &createInfo);
 	void createDebugMessengerExtension();
 	void createSync();
@@ -106,7 +107,9 @@ private:
 
 	VkDeviceSize _minUniBufOffset;
 	size_t _modelUniAlignment;
-	UboModel *_modelTransferSpace;
+	Model *_modelTransferSpace;
+
+	VkPushConstantRange _pushConstRange;
 
 	// Scene Settings
 	struct UboViewProjection {

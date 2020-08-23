@@ -9,7 +9,7 @@
 
 using std::vector;
 
-struct UboModel {
+struct Model {
 	glm::mat4 model;
 };
 
@@ -22,7 +22,7 @@ public:
 		vector<Vertex> *vertices, vector<uint32_t> *indices);
 
 	void setModel(glm::mat4 model);
-	UboModel getModel();
+	Model getModel();
 
 	int getVertexCount();
 	int getIndexCount();
@@ -44,7 +44,7 @@ private:
 	VkBuffer _indexBuffer;
 	VkDeviceMemory _indexBufferMemory;
 
-	UboModel _uboModel;
+	Model _model;
 
 	void createVertexBuffer(VkQueue transferQueue, VkCommandPool transferCommandPool, vector<Vertex> *vertices);
 	void createIndexBuffer(VkQueue transferQueue, VkCommandPool transferCommandPool, vector<uint32_t> *indices);
