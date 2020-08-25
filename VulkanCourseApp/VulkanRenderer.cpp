@@ -22,18 +22,22 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createGraphicsPipeline();
 		createFramebuffers();
 		createCommandPool();
+		
+		int firstTexture = createTexture("giraffe.jpg");
 
-		_uboViewProj.proj = glm::perspective(glm::radians(45.0f), 
+		_uboViewProj.proj = glm::perspective(
+			glm::radians(45.0f), 
 			(float)_swapchainExtent.width / (float)_swapchainExtent.height, 
 			0.1f, 
-			100.0f);
+			100.0f
+		);
 
 		// Y coordinate is inverted in Vulkan.
 		_uboViewProj.proj[1][1] *= -1;
 
 		_uboViewProj.view = glm::lookAt(
-			glm::vec3(0.0f, 0.0f, 2.0f), // Where the camera is.
-			glm::vec3(0.0f, 0.0f, 0.0f), // eye at origin.
+			glm::vec3(0.0f, 0.0f, 3.0f), // Where the camera is.
+			glm::vec3(0.0f, 0.0f, -4.0f), // eye at origin.
 			glm::vec3(0.0f, 1.0f, 0.0f)); // up is y value of 1 above camera.
 
 		// Create a mesh.
@@ -144,6 +148,11 @@ void VulkanRenderer::destroy() {
 	vkDeviceWaitIdle(_mainDevice.logicalDevice);
 
 	_aligned_free(_modelTransferSpace);
+
+	for (size_t i{ 0 }; i < _textureImages.size(); i++) {
+		vkDestroyImage(_mainDevice.logicalDevice, _textureImages[i], nullptr);
+		vkFreeMemory(_mainDevice.logicalDevice, _textureImageMems[i], nullptr);
+	}
 
 	vkDestroyImageView(_mainDevice.logicalDevice, _depthBufImageView, nullptr); 
 	vkDestroyImage(_mainDevice.logicalDevice, _depthBufImage, nullptr);
@@ -1438,4 +1447,89 @@ VkFormat VulkanRenderer::chooseSupportedFormat(const vector<VkFormat> &formats, 
 		}
 	}
 	throw std::runtime_error("Failed to find a matching format.");
+}
+
+stbi_uc *VulkanRenderer::loadTextureFile(const string &fileName, int *width, int *height, VkDeviceSize *imageSize) {
+	// Number of channels image uses.
+	int channels{ 0 };
+	const int pixelChannels = 4;
+
+	// Load pixel data for image.
+	const string fileLoc{ "Textures/" + fileName };
+	stbi_uc *image{ 
+		stbi_load(fileLoc.c_str(), width, height, &channels, STBI_rgb_alpha) 
+	};
+
+	if (!image) {
+		throw std::runtime_error("Failed to load texture file=" + fileLoc);
+	}
+
+	// Calculate image size using given and known data.
+	// w * h * 4
+	// Each pixel has 4 channels.
+	*imageSize = *width * *height * pixelChannels;
+
+	return image;
+}
+
+int VulkanRenderer::createTexture(const string &fileName) {
+	int width, height;
+	VkDeviceSize imageSize;
+	stbi_uc *imageData{ 
+		loadTextureFile(fileName, &width, &height, &imageSize) 
+	};
+
+	// Create staging buffer to hold loaded data, ready to copy to device.
+	VkBuffer imageStagingBuf;
+	VkDeviceMemory imageStagingBufMem;
+
+	createBuffer(_mainDevice.physicalDevice, _mainDevice.logicalDevice, imageSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		&imageStagingBuf,
+		&imageStagingBufMem);
+
+	// Copy image data to staging buf.
+	void *data;
+	vkMapMemory(_mainDevice.logicalDevice, imageStagingBufMem, 0,
+		imageSize,
+		0,
+		&data);
+	memcpy(data, imageData, static_cast<size_t>(imageSize));
+	vkUnmapMemory(_mainDevice.logicalDevice, imageStagingBufMem);
+
+	// Free original image data.
+	stbi_image_free(imageData);
+
+	// Create image to hold final texture.
+	VkDeviceMemory texImgMem;
+	VkImage texImg{
+		createImage(width, height,
+		VK_FORMAT_R8G8B8A8_UNORM,
+		VK_IMAGE_TILING_OPTIMAL,
+		VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		&texImgMem)
+	};
+
+	// Copy data to image.
+	// Transition image to be DST for copy operation.
+	transitionImageLayout(_mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool, texImg,
+		VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	copyImageBuffer(_mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool,
+		imageStagingBuf, texImg, width, height);
+
+	transitionImageLayout(_mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool, texImg,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	// Add texture data to vector for reference.
+	_textureImages.push_back(texImg);
+	_textureImageMems.push_back(texImgMem);
+
+	vkDestroyBuffer(_mainDevice.logicalDevice, imageStagingBuf, nullptr);
+	vkFreeMemory(_mainDevice.logicalDevice, imageStagingBufMem, nullptr);
+
+	// Return index of new texture image.
+	return _textureImages.size() - 1;
 }

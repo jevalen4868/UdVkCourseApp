@@ -10,8 +10,10 @@
 #include <set>
 #include <algorithm>
 #include <array>
+
 #include "Utilities.h"
 #include "Mesh.h"
+#include "stb_image.h"
 
 using std::vector;
 using std::set;
@@ -75,6 +77,9 @@ private:
 	VkPresentModeKHR chooseBestPresMode(const vector <VkPresentModeKHR> presModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &surfaceCapabilities);
 	VkFormat chooseSupportedFormat(const vector<VkFormat> &formats, const VkImageTiling &tiling, const VkFormatFeatureFlags &featureFlags);
+	// -- Loader functions
+	stbi_uc *loadTextureFile(const string &fileName, int *width, int *height, VkDeviceSize *imageSize);
+	int createTexture(const string &fileName);
 
 	// VARS
 	int _currentFrame{ 0 };
@@ -140,6 +145,10 @@ private:
 	vector<VkDeviceMemory> _modelDynUniformBufMems;
 	
 	vector<VkDescriptorSet> _descSets;
+
+	// - Assets
+	vector<VkImage> _textureImages;
+	vector<VkDeviceMemory> _textureImageMems;
 
 	// SYNC
 	vector<VkSemaphore> _imageAvailable;
