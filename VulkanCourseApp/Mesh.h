@@ -19,13 +19,15 @@ public:
 	Mesh();
 	Mesh(VkPhysicalDevice physicalDevice, VkDevice device, 
 		VkQueue transferQueue, VkCommandPool transferCommandPool, 
-		vector<Vertex> *vertices, vector<uint32_t> *indices);
+		vector<Vertex> *vertices, vector<uint32_t> *indices,
+		int newTexId);
 
 	void setModel(glm::mat4 model);
 	Model getModel();
 
 	int getVertexCount();
 	int getIndexCount();
+	int getTexId();
 	VkBuffer getVertexBuffer();
 	VkBuffer getIndexBuffer();
 
@@ -34,6 +36,7 @@ public:
 	~Mesh();
 private:
 	int _vertexCount;
+	int _texId;
 	VkBuffer _vertexBuffer;
 	VkDeviceMemory _vertexBufferMemory;
 	VkPhysicalDevice _physicalDevice;

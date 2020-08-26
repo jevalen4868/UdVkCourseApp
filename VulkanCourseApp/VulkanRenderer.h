@@ -54,6 +54,7 @@ private:
 	void createUniformBuffers();
 	void createDescriptorPool();
 	void createDescriptorSets();
+	void createTextureSampler();
 	void updateUniformBuffers(const uint32_t &imageIndex);
 	void allocateDynamicBufferTransferSpace();
 	// - get functions
@@ -79,7 +80,9 @@ private:
 	VkFormat chooseSupportedFormat(const vector<VkFormat> &formats, const VkImageTiling &tiling, const VkFormatFeatureFlags &featureFlags);
 	// -- Loader functions
 	stbi_uc *loadTextureFile(const string &fileName, int *width, int *height, VkDeviceSize *imageSize);
+	int createTextureImage(const string &fileName);
 	int createTexture(const string &fileName);
+	int createTextureDescriptor(VkImageView texImg);
 
 	// VARS
 	int _currentFrame{ 0 };
@@ -112,7 +115,9 @@ private:
 
 	// DESCRIPTORS
 	VkDescriptorSetLayout _descSetLayout;
+	VkDescriptorSetLayout _samplerSetLayout;
 	VkDescriptorPool _descPool;
+	VkDescriptorPool _samplerDescPool;
 
 	VkDeviceSize _minUniBufOffset;
 	size_t _modelUniAlignment;
@@ -124,6 +129,8 @@ private:
 	VkDeviceMemory _depthBufImageMem;
 	VkImageView _depthBufImageView;
 	VkFormat _depthBufFormat;
+
+	VkSampler _textureSampler;
 
 	// Scene Settings
 	struct UboViewProjection {
@@ -145,10 +152,12 @@ private:
 	vector<VkDeviceMemory> _modelDynUniformBufMems;
 	
 	vector<VkDescriptorSet> _descSets;
+	vector<VkDescriptorSet> _samplerDescSets;
 
 	// - Assets
 	vector<VkImage> _textureImages;
 	vector<VkDeviceMemory> _textureImageMems;
+	vector<VkImageView> _textureImageViews;
 
 	// SYNC
 	vector<VkSemaphore> _imageAvailable;

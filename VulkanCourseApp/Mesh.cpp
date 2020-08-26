@@ -5,7 +5,8 @@ Mesh::Mesh() {
 
 Mesh::Mesh(VkPhysicalDevice physicalDevice, VkDevice device,
 	VkQueue transferQueue, VkCommandPool transferCommandPool,
-	vector<Vertex> *vertices, vector<uint32_t> *indices) {
+	vector<Vertex> *vertices, vector<uint32_t> *indices,
+	int newTexId) : _texId(newTexId) {
 	_vertexCount = vertices->size();
 	_indexCount = indices->size();
 	_physicalDevice = physicalDevice;
@@ -30,6 +31,10 @@ int Mesh::getVertexCount() {
 
 int Mesh::getIndexCount() {
 	return _indexCount;
+}
+
+int Mesh::getTexId() {
+	return _texId;
 }
 
 VkBuffer Mesh::getVertexBuffer() {
