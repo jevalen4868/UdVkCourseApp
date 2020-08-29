@@ -24,7 +24,7 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		createCommandPool();
 		createCommandBuffers();
 		createTextureSampler();
-		allocateDynamicBufferTransferSpace();
+		//allocateDynamicBufferTransferSpace();
 		createUniformBuffers();
 		createDescriptorPool();
 		createDescriptorSets();
@@ -41,10 +41,11 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 		_uboViewProj.proj[1][1] *= -1;
 
 		_uboViewProj.view = glm::lookAt(
-			glm::vec3(2.0f, 0.0f, 2.0f), // Where the camera is.
+			glm::vec3(10.0f, 0.0f, 20.0f), // Where the camera is.
 			glm::vec3(0.0f, 0.0f, -2.0f), // eye at origin.
 			glm::vec3(0.0f, 1.0f, 0.0f)); // up is y value of 1 above camera.
 
+		/*
 		// Create a mesh.
 		// Vertex data.
 		vector<Vertex> meshVertices00{
@@ -72,6 +73,10 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 
 		_meshes.push_back(Mesh(_mainDevice.physicalDevice, _mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool,
 			&meshVertices01, &meshIndices, createTexture("giraffe.jpg")));
+		*/
+
+		// Create our default "no texture" texture.
+		createTexture("plain.png");
 
 	}
 	catch (const std::runtime_error &e) {
@@ -83,12 +88,12 @@ int VulkanRenderer::init(GLFWwindow *newWindow) {
 }
 
 void VulkanRenderer::updateModel(const size_t &modelId, const glm::mat4 &newModel) {
-	if (modelId >= _meshes.size()) {
+	if (modelId >= _models.size()) {
 		printf("Why are you trying to print an index out of range?");
 		return;
 	}
 
-	_meshes[modelId].setModel(newModel);
+	_models[modelId].setModel(newModel);
 }
 
 void VulkanRenderer::draw() {
@@ -146,7 +151,11 @@ void VulkanRenderer::destroy() {
 	// wait for device to be finished.
 	vkDeviceWaitIdle(_mainDevice.logicalDevice);
 
-	_aligned_free(_modelTransferSpace);
+	//_aligned_free(_modelTransferSpace);
+
+	for (size_t i{ 0 }; i < _models.size(); i++) {
+		_models[i].destroyMeshModel();
+	}
 
 	vkDestroyDescriptorPool(_mainDevice.logicalDevice, _samplerDescPool, nullptr);
 	vkDestroyDescriptorSetLayout(_mainDevice.logicalDevice, _samplerSetLayout, nullptr);
@@ -163,9 +172,11 @@ void VulkanRenderer::destroy() {
 	vkDestroyImage(_mainDevice.logicalDevice, _depthBufImage, nullptr);
 	vkFreeMemory(_mainDevice.logicalDevice, _depthBufImageMem, nullptr);
 
+	/*
 	for (Mesh mesh : _meshes) {
 		mesh.destroyBuffers();
 	}
+	*/
 
 	for (size_t i{ 0 }; i < MAX_FRAME_DRAWS; i++) {
 		vkDestroySemaphore(_mainDevice.logicalDevice, _renderFinished[i], nullptr);
@@ -184,8 +195,8 @@ void VulkanRenderer::destroy() {
 		vkDestroyBuffer(_mainDevice.logicalDevice, _vpUniformBuffers[i], nullptr);
 		vkFreeMemory(_mainDevice.logicalDevice, _vpUniformBufMems[i], nullptr);
 
-		vkDestroyBuffer(_mainDevice.logicalDevice, _modelDynUniformBuffers[i], nullptr);
-		vkFreeMemory(_mainDevice.logicalDevice, _modelDynUniformBufMems[i], nullptr);
+		//vkDestroyBuffer(_mainDevice.logicalDevice, _modelDynUniformBuffers[i], nullptr);
+		//vkFreeMemory(_mainDevice.logicalDevice, _modelDynUniformBufMems[i], nullptr);
 	}
 	vkDestroyPipeline(_mainDevice.logicalDevice, _graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(_mainDevice.logicalDevice, _pipelineLayout, nullptr);
@@ -707,17 +718,8 @@ void VulkanRenderer::recordCommands(const uint32_t &currentImage) {
 			// Bind pipeline to be used in render pass.
 			vkCmdBindPipeline(_commandBuffers[currentImage], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
 
-			for (size_t meshIdx{ 0 }; meshIdx < _meshes.size(); meshIdx++) {
-				VkBuffer vertexBuffers []{ _meshes[meshIdx].getVertexBuffer() }; // Buffers to bind.
-				VkDeviceSize offsets []{ 0 }; // Offsets into buffers being bound.
-				// For firstBinding var, imagine shader has a implicit binding = 0 value.
-				vkCmdBindVertexBuffers(_commandBuffers[currentImage], 0, 1, vertexBuffers, offsets); // Command to bind vertex buffer before drawing with them.
-
-				// Bind mesh index buffer with 0 offset and using uint32_t type.
-				vkCmdBindIndexBuffer(_commandBuffers[currentImage], _meshes[meshIdx].getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-
-				// Dynamic Offset Amount
-				uint32_t dynamicOffset{ static_cast<uint32_t>(_modelUniAlignment) * meshIdx };
+			for (size_t modelIdx{ 0 }; modelIdx < _models.size(); modelIdx++) {
+				MeshModel curModel{ _models[modelIdx] };
 
 				// Push constant given to shader stage directly. (no buffer).
 				vkCmdPushConstants(_commandBuffers[currentImage], 
@@ -725,25 +727,39 @@ void VulkanRenderer::recordCommands(const uint32_t &currentImage) {
 					VK_SHADER_STAGE_VERTEX_BIT, // Stage to push constant to.
 					0, // Offset of push constant to update.
 					sizeof(Model), // Size of data being pushed.
-					&_meshes[meshIdx].getModel()); // Actual data being pushed (can be array).
+					&curModel.getModel()); // Actual data being pushed (can be array).
 
-				array<VkDescriptorSet, 2> descSetGroup{ _descSets[currentImage],
-				_samplerDescSets[_meshes[meshIdx].getTexId()] };
+				for (size_t meshIdx{ 0 }; meshIdx < curModel.getMeshCount(); meshIdx++) {					
+					VkBuffer vertexBuffers []{ curModel.getMesh(meshIdx)->getVertexBuffer() }; // Buffers to bind.
+					VkDeviceSize offsets []{ 0 }; // Offsets into buffers being bound.
+					// For firstBinding var, imagine shader has a implicit binding = 0 value.
+					vkCmdBindVertexBuffers(_commandBuffers[currentImage], 0, 1, vertexBuffers, offsets); // Command to bind vertex buffer before drawing with them.
 
-				// Bind descriptor sets.
-				vkCmdBindDescriptorSets(_commandBuffers[currentImage], VK_PIPELINE_BIND_POINT_GRAPHICS, _pipelineLayout,
-					0,
-					static_cast<uint32_t>(descSetGroup.size()),
-					descSetGroup.data(),
-					1,
-					&dynamicOffset);
+					// Bind mesh index buffer with 0 offset and using uint32_t type.
+					vkCmdBindIndexBuffer(_commandBuffers[currentImage], curModel.getMesh(meshIdx)->getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-				// Execute our pipeline.
-				vkCmdDrawIndexed(_commandBuffers[currentImage], _meshes[meshIdx].getIndexCount(), 1
-					, 0 // "index" of index to start at.
-					, 0 // "offset" of vertex to start at.
-					, 0); // which instance of mesh is first. to draw		
-				// gl_InstanceIndex can be used in the shader for the instance count.
+					// Dynamic Offset Amount
+					//uint32_t dynamicOffset{ static_cast<uint32_t>(_modelUniAlignment) * meshIdx };
+
+					array<VkDescriptorSet, 2> descSetGroup{ _descSets[currentImage],
+						_samplerDescSets[curModel.getMesh(meshIdx)->getTexId()] };
+
+					// Bind descriptor sets.
+					vkCmdBindDescriptorSets(_commandBuffers[currentImage], VK_PIPELINE_BIND_POINT_GRAPHICS, _pipelineLayout,
+						0,
+						static_cast<uint32_t>(descSetGroup.size()),
+						descSetGroup.data(),
+						0,
+						nullptr);
+						//&dynamicOffset);
+
+					// Execute our pipeline.
+					vkCmdDrawIndexed(_commandBuffers[currentImage], curModel.getMesh(meshIdx)->getIndexCount(), 1
+						, 0 // "index" of index to start at.
+						, 0 // "offset" of vertex to start at.
+						, 0); // which instance of mesh is first. to draw		
+					// gl_InstanceIndex can be used in the shader for the instance count.
+				}
 			}
 
 			vkCmdEndRenderPass(_commandBuffers[currentImage]);
@@ -856,6 +872,7 @@ void VulkanRenderer::createDescriptorSetLayout() {
 	vpLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // Shader stage to bind to.
 	vpLayoutBinding.pImmutableSamplers = nullptr; // For texture: can make sampler data immutable.
 
+	/*
 	// Model binding info.
 	VkDescriptorSetLayoutBinding modelLayoutBinding{};
 	modelLayoutBinding.binding = 1;
@@ -863,8 +880,9 @@ void VulkanRenderer::createDescriptorSetLayout() {
 	modelLayoutBinding.descriptorCount = 1;
 	modelLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	modelLayoutBinding.pImmutableSamplers = nullptr;
+	*/
 
-	vector<VkDescriptorSetLayoutBinding> layoutBindings{ vpLayoutBinding, modelLayoutBinding };
+	vector<VkDescriptorSetLayoutBinding> layoutBindings{ vpLayoutBinding }; // , modelLayoutBinding};
 
 	// Create layout with given bindings.
 	VkDescriptorSetLayoutCreateInfo descSetLayoutCreateInfo{};
@@ -1048,14 +1066,14 @@ void VulkanRenderer::createUniformBuffers() {
 	VkDeviceSize vpBufSize = sizeof(UboViewProjection);
 
 	// Model buffer size.
-	VkDeviceSize modelBufSize = _modelUniAlignment * MAX_OBJECTS;
+	//VkDeviceSize modelBufSize = _modelUniAlignment * MAX_OBJECTS;
 
 	// One uniform buffer for each image (and by extension)
 	_vpUniformBuffers.resize(_swapchainImages.size());
 	_vpUniformBufMems.resize(_swapchainImages.size());
 
-	_modelDynUniformBuffers.resize(_swapchainImages.size());
-	_modelDynUniformBufMems.resize(_swapchainImages.size());
+	//_modelDynUniformBuffers.resize(_swapchainImages.size());
+	//_modelDynUniformBufMems.resize(_swapchainImages.size());
 
 	// create buffers
 	for (size_t i{ 0 }; i < _swapchainImages.size(); i++) {
@@ -1064,12 +1082,13 @@ void VulkanRenderer::createUniformBuffers() {
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			&_vpUniformBuffers[i],
 			&_vpUniformBufMems[i]);
-
+		/*
 		createBuffer(_mainDevice.physicalDevice, _mainDevice.logicalDevice, modelBufSize,
 			VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			&_modelDynUniformBuffers[i],
 			&_modelDynUniformBufMems[i]);
+		*/
 	}
 }
 
@@ -1081,12 +1100,14 @@ void VulkanRenderer::createDescriptorPool() {
 	vpPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	vpPoolSize.descriptorCount = static_cast<uint32_t>(_vpUniformBuffers.size());
 
+	/*
 	// Mode Projection Pool (DYNAMIC)
 	VkDescriptorPoolSize modelPoolSize{};
 	modelPoolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	modelPoolSize.descriptorCount = static_cast<uint32_t>(_modelDynUniformBuffers.size());
+	*/
 
-	vector<VkDescriptorPoolSize> poolSizes{ vpPoolSize, modelPoolSize };
+	vector<VkDescriptorPoolSize> poolSizes{ vpPoolSize }; // , modelPoolSize };
 
 	VkDescriptorPoolCreateInfo descPoolCreateInfo{};
 	descPoolCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1153,6 +1174,7 @@ void VulkanRenderer::createDescriptorSets() {
 		vpSetWrite.descriptorCount = 1; // How many descs we are updating.
 		vpSetWrite.pBufferInfo = &vpBufInfo; // Info about buffer data to bind.
 
+		/*
 		// Model descriptor.
 		// Model buffer binding info.
 		VkDescriptorBufferInfo modelBufInfo{};
@@ -1168,8 +1190,9 @@ void VulkanRenderer::createDescriptorSets() {
 		modelSetWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 		modelSetWrite.descriptorCount = 1;
 		modelSetWrite.pBufferInfo = &modelBufInfo;
+		*/
 
-		vector<VkWriteDescriptorSet> writeDescSets{ vpSetWrite, modelSetWrite };
+		vector<VkWriteDescriptorSet> writeDescSets{ vpSetWrite }; // , modelSetWrite };
 
 		// Update the desc sets with new buffer binding info.
 		vkUpdateDescriptorSets(_mainDevice.logicalDevice, 
@@ -1215,10 +1238,11 @@ void VulkanRenderer::updateUniformBuffers(const uint32_t &imageIndex) {
 	memcpy(data, &_uboViewProj, _uboViewProjSize);
 	vkUnmapMemory(_mainDevice.logicalDevice, _vpUniformBufMems[imageIndex]);
 
+	/*
 	// Copy model data.
 	for (size_t i{ 0 }; i < _meshes.size(); i++) {
 		// Add offset to where the alignment meets for the next object.
-		Model *thisModel{ (Model *)((uint64_t)_modelTransferSpace + (i * _modelUniAlignment)) };
+		UboModel *thisModel{ (UboModel *)((uint64_t)_modelTransferSpace + (i * _modelUniAlignment)) };
 		*thisModel = _meshes[i].getModel();
 	}
 
@@ -1233,9 +1257,11 @@ void VulkanRenderer::updateUniformBuffers(const uint32_t &imageIndex) {
 		&data);
 	memcpy(data, _modelTransferSpace, modelUniDataSize);
 	vkUnmapMemory(_mainDevice.logicalDevice, _modelDynUniformBufMems[imageIndex]);
+	*/
 }
 
 void VulkanRenderer::allocateDynamicBufferTransferSpace() {
+	/*
 	// Calculate alignment of model data.
 	// ex _minUniBufOffset = 32 = 00100000
 	// ~(_uniBufOffset - 1) = Inverse of (00100000 - 1) -> inverse of 00011111 -> 11100000 = MASK
@@ -1243,7 +1269,7 @@ void VulkanRenderer::allocateDynamicBufferTransferSpace() {
 
 	// Create space in memory to hold dynamic buffer that is aligned to our required alignment and holds MAX_OBJECTS.
 	_modelTransferSpace = (Model *)_aligned_malloc(_modelUniAlignment * MAX_OBJECTS, _modelUniAlignment);
-
+	*/
 }
 
 void VulkanRenderer::getPhysicalDevice() {
@@ -1271,7 +1297,7 @@ void VulkanRenderer::getPhysicalDevice() {
 	// Get props of new device.
 	VkPhysicalDeviceProperties deviceProps{};
 	vkGetPhysicalDeviceProperties(_mainDevice.physicalDevice, &deviceProps);
-	_minUniBufOffset = deviceProps.limits.minUniformBufferOffsetAlignment;	
+	//_minUniBufOffset = deviceProps.limits.minUniformBufferOffsetAlignment;	
 }
 
 vector<const char *> VulkanRenderer::getRequiredExtensions() {
@@ -1624,7 +1650,7 @@ int VulkanRenderer::createTexture(const string &fileName) {
 	return descLoc;
 }
 
-int VulkanRenderer::createTextureDescriptor(VkImageView texImg) {
+int VulkanRenderer::createTextureDescriptor(VkImageView textureImage) {
 	VkDescriptorSet descSet;
 	
 	// Descriptor set Alloc info.
@@ -1641,7 +1667,7 @@ int VulkanRenderer::createTextureDescriptor(VkImageView texImg) {
 	// Texture image info.
 	VkDescriptorImageInfo imageInfo{};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; // Image layout when in use.
-	imageInfo.imageView = texImg; // Image to bind to set.
+	imageInfo.imageView = textureImage; // Image to bind to set.
 	imageInfo.sampler = _textureSampler; // Sampler to use for set.
 
 	VkWriteDescriptorSet descWrite{};
@@ -1660,4 +1686,45 @@ int VulkanRenderer::createTextureDescriptor(VkImageView texImg) {
 	_samplerDescSets.push_back(descSet);
 
 	return _samplerDescSets.size() - 1;
+}
+
+int VulkanRenderer::createMeshModel(string modelFile) {
+	// Import model scene.
+	Assimp::Importer importer;
+	const aiScene *scene{ 
+		importer.ReadFile(modelFile, 
+		aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_JoinIdenticalVertices) 
+	};
+	if (!scene) {
+		throw std::runtime_error("Failed to load model scene=" + modelFile);
+	}
+
+	// Get vector of all mats with 1:1 ID placement.
+	vector<string> textureNames{ MeshModel::LoadMaterials(scene) };
+
+	// Conversion from mat list ids to descriptor array ids.
+	vector<int> matToTex(textureNames.size());
+
+	// Loop over texnames and create texture for them.
+	for (size_t i{ 0 }; i < textureNames.size(); i++) {		
+		if (textureNames[i].empty()) {
+			matToTex[i] = 0; // use mat 0 for any blanks. 0 Will be reserved for a default tex.
+		}
+		else {
+			// Otherwise, create texture and set value to index of new tex.
+			matToTex[i] = createTexture(textureNames[i]);
+		}
+	}
+
+	// Load in all our meshes.
+	vector<Mesh> modelMeshes{
+		MeshModel::LoadNode(_mainDevice.physicalDevice, _mainDevice.logicalDevice, _graphicsQueue, _graphicsCommandPool,
+		scene->mRootNode, scene, matToTex)
+	};
+
+	// Create meshModel and add to list.
+	MeshModel meshModel{ modelMeshes };
+	_models.push_back(meshModel);
+
+	return _models.size() - 1;
 }

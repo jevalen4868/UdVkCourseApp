@@ -5,6 +5,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>	
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
 #include <stdexcept>
 #include <vector>
 #include <set>
@@ -14,6 +18,7 @@
 #include "Utilities.h"
 #include "Mesh.h"
 #include "stb_image.h"
+#include "MeshModel.h"
 
 using std::vector;
 using std::set;
@@ -29,6 +34,7 @@ public:
 	~VulkanRenderer();
 	int init(GLFWwindow *newWindow);
 	void updateModel(const size_t &modelId, const glm::mat4 &model);
+	int createMeshModel(string modelFile);
 	void draw();
 	void destroy();
 private:
@@ -80,6 +86,7 @@ private:
 	VkFormat chooseSupportedFormat(const vector<VkFormat> &formats, const VkImageTiling &tiling, const VkFormatFeatureFlags &featureFlags);
 	// -- Loader functions
 	stbi_uc *loadTextureFile(const string &fileName, int *width, int *height, VkDeviceSize *imageSize);
+	
 	int createTextureImage(const string &fileName);
 	int createTexture(const string &fileName);
 	int createTextureDescriptor(VkImageView texImg);
@@ -119,9 +126,9 @@ private:
 	VkDescriptorPool _descPool;
 	VkDescriptorPool _samplerDescPool;
 
-	VkDeviceSize _minUniBufOffset;
-	size_t _modelUniAlignment;
-	Model *_modelTransferSpace;
+	//VkDeviceSize _minUniBufOffset;
+	//size_t _modelUniAlignment;
+	//UboModel *_modelTransferSpace;
 
 	VkPushConstantRange _pushConstRange;
 
@@ -142,14 +149,14 @@ private:
 
 	// variable length vars.
 	// Scene Objects
-	vector<Mesh> _meshes;
+	//vector<Mesh> _meshes;
 
 	// - Need one for each command buffer
 	vector<VkBuffer> _vpUniformBuffers;
 	vector<VkDeviceMemory> _vpUniformBufMems;
 	
-	vector<VkBuffer> _modelDynUniformBuffers;
-	vector<VkDeviceMemory> _modelDynUniformBufMems;
+	//vector<VkBuffer> _modelDynUniformBuffers;
+	//vector<VkDeviceMemory> _modelDynUniformBufMems;
 	
 	vector<VkDescriptorSet> _descSets;
 	vector<VkDescriptorSet> _samplerDescSets;
@@ -158,6 +165,7 @@ private:
 	vector<VkImage> _textureImages;
 	vector<VkDeviceMemory> _textureImageMems;
 	vector<VkImageView> _textureImageViews;
+	vector<MeshModel> _models;
 
 	// SYNC
 	vector<VkSemaphore> _imageAvailable;
