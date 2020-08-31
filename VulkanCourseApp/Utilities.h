@@ -18,6 +18,12 @@ const vector<const char *> DEVICE_EXTENSIONS{
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 };
 
+// Scene Settings
+struct UboViewProjection {
+	glm::mat4 proj;
+	glm::mat4 view;
+};
+
 struct Vertex {
 	glm::vec3 pos; // vertex position (x, y, z)
 	glm::vec3 col; // vertex color (r, g, b)

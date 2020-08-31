@@ -710,11 +710,9 @@ void VulkanRenderer::recordCommands(const uint32_t &currentImage) {
 			throw std::runtime_error("Failed to start recording a command buffer.");
 	}		
 
-	{
 		// Begin Render Pass.
 		vkCmdBeginRenderPass(_commandBuffers[currentImage], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		{
 			// Bind pipeline to be used in render pass.
 			vkCmdBindPipeline(_commandBuffers[currentImage], VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
 
@@ -729,20 +727,21 @@ void VulkanRenderer::recordCommands(const uint32_t &currentImage) {
 					sizeof(Model), // Size of data being pushed.
 					&curModel.getModel()); // Actual data being pushed (can be array).
 
-				for (size_t meshIdx{ 0 }; meshIdx < curModel.getMeshCount(); meshIdx++) {					
-					VkBuffer vertexBuffers []{ curModel.getMesh(meshIdx)->getVertexBuffer() }; // Buffers to bind.
+				for (size_t meshIdx{ 0 }; meshIdx < curModel.getMeshCount(); meshIdx++) {
+					Mesh *mesh{ curModel.getMesh(meshIdx) };
+					VkBuffer vertexBuffers []{ mesh->getVertexBuffer() }; // Buffers to bind.
 					VkDeviceSize offsets []{ 0 }; // Offsets into buffers being bound.
 					// For firstBinding var, imagine shader has a implicit binding = 0 value.
 					vkCmdBindVertexBuffers(_commandBuffers[currentImage], 0, 1, vertexBuffers, offsets); // Command to bind vertex buffer before drawing with them.
 
 					// Bind mesh index buffer with 0 offset and using uint32_t type.
-					vkCmdBindIndexBuffer(_commandBuffers[currentImage], curModel.getMesh(meshIdx)->getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+					vkCmdBindIndexBuffer(_commandBuffers[currentImage], mesh->getIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 					// Dynamic Offset Amount
 					//uint32_t dynamicOffset{ static_cast<uint32_t>(_modelUniAlignment) * meshIdx };
 
 					array<VkDescriptorSet, 2> descSetGroup{ _descSets[currentImage],
-						_samplerDescSets[curModel.getMesh(meshIdx)->getTexId()] };
+						_samplerDescSets[mesh->getTexId()] };
 
 					// Bind descriptor sets.
 					vkCmdBindDescriptorSets(_commandBuffers[currentImage], VK_PIPELINE_BIND_POINT_GRAPHICS, _pipelineLayout,
@@ -754,7 +753,7 @@ void VulkanRenderer::recordCommands(const uint32_t &currentImage) {
 						//&dynamicOffset);
 
 					// Execute our pipeline.
-					vkCmdDrawIndexed(_commandBuffers[currentImage], curModel.getMesh(meshIdx)->getIndexCount(), 1
+					vkCmdDrawIndexed(_commandBuffers[currentImage], mesh->getIndexCount(), 1
 						, 0 // "index" of index to start at.
 						, 0 // "offset" of vertex to start at.
 						, 0); // which instance of mesh is first. to draw		
@@ -763,10 +762,6 @@ void VulkanRenderer::recordCommands(const uint32_t &currentImage) {
 			}
 
 			vkCmdEndRenderPass(_commandBuffers[currentImage]);
-			
-		}
-
-	}
 
 	// Stop recording		
 	if (vkEndCommandBuffer(_commandBuffers[currentImage]) != VK_SUCCESS) {
@@ -1569,7 +1564,7 @@ stbi_uc *VulkanRenderer::loadTextureFile(const string &fileName, int *width, int
 	// Calculate image size using given and known data.
 	// w * h * 4
 	// Each pixel has 4 channels.
-	*imageSize = *width * *height * pixelChannels;
+	*imageSize = *width * *height * 4;
 
 	return image;
 }
@@ -1727,4 +1722,12 @@ int VulkanRenderer::createMeshModel(string modelFile) {
 	_models.push_back(meshModel);
 
 	return _models.size() - 1;
+}
+
+UboViewProjection *VulkanRenderer::getViewProj() {
+	return &_uboViewProj;
+}
+
+void VulkanRenderer::setViewProj(const UboViewProjection *viewProj) {
+	_uboViewProj = *viewProj;
 }

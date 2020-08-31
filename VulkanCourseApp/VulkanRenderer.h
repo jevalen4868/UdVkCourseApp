@@ -35,6 +35,9 @@ public:
 	int init(GLFWwindow *newWindow);
 	void updateModel(const size_t &modelId, const glm::mat4 &model);
 	int createMeshModel(string modelFile);
+	UboViewProjection *getViewProj();
+	void setViewProj(const UboViewProjection *viewProj);
+
 	void draw();
 	void destroy();
 private:
@@ -138,12 +141,8 @@ private:
 	VkFormat _depthBufFormat;
 
 	VkSampler _textureSampler;
-
-	// Scene Settings
-	struct UboViewProjection {
-		glm::mat4 proj;
-		glm::mat4 view;
-	} _uboViewProj;
+	
+	UboViewProjection _uboViewProj;
 
 	const size_t _uboViewProjSize = sizeof(UboViewProjection);
 

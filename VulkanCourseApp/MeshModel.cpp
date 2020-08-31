@@ -47,6 +47,21 @@ vector<string> MeshModel::LoadMaterials(const aiScene *scene) {
 		// Init the text to empty string (will be replaced if tex exists.
 		textures[i] = "";
 
+#ifdef NDEBUG
+		printf("Texture Count aiTextureType_DIFFUSE\t=%i\n", mat->GetTextureCount(aiTextureType_DIFFUSE));
+		printf("Texture Count aiTextureType_AMBIENT\t=%i\n", mat->GetTextureCount(aiTextureType_AMBIENT));
+		printf("Texture Count aiTextureType_DISPLACEMENT=%i\n", mat->GetTextureCount(aiTextureType_DISPLACEMENT));
+		printf("Texture Count aiTextureType_EMISSIVE\t=%i\n", mat->GetTextureCount(aiTextureType_EMISSIVE));
+		printf("Texture Count aiTextureType_HEIGHT\t=%i\n", mat->GetTextureCount(aiTextureType_HEIGHT));
+		printf("Texture Count aiTextureType_LIGHTMAP\t=%i\n", mat->GetTextureCount(aiTextureType_LIGHTMAP));
+		printf("Texture Count aiTextureType_NONE\t=%i\n", mat->GetTextureCount(aiTextureType_NONE));
+		printf("Texture Count aiTextureType_NORMALS\t=%i\n", mat->GetTextureCount(aiTextureType_NORMALS));
+		printf("Texture Count aiTextureType_OPACITY\t=%i\n", mat->GetTextureCount(aiTextureType_OPACITY));
+		printf("Texture Count aiTextureType_REFLECTION\t=%i\n", mat->GetTextureCount(aiTextureType_REFLECTION));
+		printf("Texture Count aiTextureType_SPECULAR\t=%i\n", mat->GetTextureCount(aiTextureType_SPECULAR));
+		printf("Texture Count aiTextureType_SHININESS\t=%i\n", mat->GetTextureCount(aiTextureType_SHININESS));
+		printf("Texture Count aiTextureType_UNKNOWN\t=%i\n\n", mat->GetTextureCount(aiTextureType_UNKNOWN));
+#endif
 		// Check for a diffuse texture (standard detail texture)
 		if (mat->GetTextureCount(aiTextureType_DIFFUSE)) {
 			// Get the path of the texture file.
@@ -101,14 +116,12 @@ Mesh MeshModel::LoadMesh(VkPhysicalDevice physDev, VkDevice device, VkQueue tran
 	// Go through each vertex and copy it across to our vertices.
 	for (size_t i{ 0 }; i < mesh->mNumVertices; i++) {
 		// Set position
-		aiVector3t<ai_real> *vertex{ mesh->mVertices };
-		vertices[i].pos = { vertex->x, vertex->y, vertex->z };
+		vertices[i].pos = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
 
 		// Set tex coords (if they exist).
-		if (mesh->mTextureCoords[0]) {
-			aiVector3t<ai_real> textureCoords{ mesh->mTextureCoords[0][i] };
+		if (mesh->mTextureCoords[0]) {			
 			vertices[i].tex = {
-				textureCoords.x, textureCoords.y
+				mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y
 			};
 		}
 		else {
@@ -117,8 +130,14 @@ Mesh MeshModel::LoadMesh(VkPhysicalDevice physDev, VkDevice device, VkQueue tran
 			};
 		}
 
-		// Set color (just use white for now)
-		vertices[i].col = { 1.0f, 1.0f, 1.0f };
+		if (mesh->mColors[0]) {
+			vertices[i].col = { mesh->mColors[0][i].r, mesh->mColors[0][i].g, mesh->mColors[0][i].b };
+		}
+		else {
+			// Set color (just use white for now)
+			vertices[i].col = { 1.0f, 1.0f, 1.0f };
+		}
+
 	}
 
 	// Iterate over indices through faces and copy across.
