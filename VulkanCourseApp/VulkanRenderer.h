@@ -52,6 +52,7 @@ private:
 	void createDescriptorSetLayout();
 	void createPushConstantRange();
 	void createGraphicsPipeline();
+	void createColorBufferImages();
 	void createDepthBufferImage();
 	void createFramebuffers();
 	void createCommandPool();
@@ -63,6 +64,7 @@ private:
 	void createUniformBuffers();
 	void createDescriptorPool();
 	void createDescriptorSets();
+	void createInputDescriptorSets();
 	void createTextureSampler();
 	void updateUniformBuffers(const uint32_t &imageIndex);
 	void allocateDynamicBufferTransferSpace();
@@ -120,31 +122,42 @@ private:
 	VkPipelineLayout _pipelineLayout;
 	VkPipeline _graphicsPipeline;
 
+	VkPipeline _secondPipeline;
+	VkPipelineLayout _secondPipelineLayout;
+
 	// POOLS
 	VkCommandPool _graphicsCommandPool;
 
 	// DESCRIPTORS
 	VkDescriptorSetLayout _descSetLayout;
 	VkDescriptorSetLayout _samplerSetLayout;
+	VkDescriptorSetLayout _inputSetLayout;
 	VkDescriptorPool _descPool;
 	VkDescriptorPool _samplerDescPool;
+	VkDescriptorPool _inputDescPool;
 
 	//VkDeviceSize _minUniBufOffset;
 	//size_t _modelUniAlignment;
 	//UboModel *_modelTransferSpace;
 
 	VkPushConstantRange _pushConstRange;
-
-	VkImage _depthBufImage;
-	VkDeviceMemory _depthBufImageMem;
-	VkImageView _depthBufImageView;
+	VkFormat _colorBufFormat;
 	VkFormat _depthBufFormat;
+
 
 	VkSampler _textureSampler;
 	
 	UboViewProjection _uboViewProj;
 
 	const size_t _uboViewProjSize = sizeof(UboViewProjection);
+
+	vector<VkImage> _colorBufImages;
+	vector<VkDeviceMemory> _colorBufImageMems;
+	vector<VkImageView> _colorBufImageViews;
+
+	vector<VkImage> _depthBufImages;
+	vector<VkDeviceMemory> _depthBufImageMems;
+	vector<VkImageView> _depthBufImageViews;
 
 	// variable length vars.
 	// Scene Objects
@@ -159,6 +172,7 @@ private:
 	
 	vector<VkDescriptorSet> _descSets;
 	vector<VkDescriptorSet> _samplerDescSets;
+	vector<VkDescriptorSet> _inputDescSets;
 
 	// - Assets
 	vector<VkImage> _textureImages;
